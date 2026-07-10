@@ -10,5 +10,6 @@ router.use(authMiddleware);
 router.post('/', agendamentoController.criar);
 router.put('/:id/cancelar', agendamentoController.cancelar);
 router.get('/meus', agendamentoController.listarMeus);
+router.get('/admin/todos', agendamentoController.listarTodos);
 
 module.exports = router;
