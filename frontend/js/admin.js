@@ -2,7 +2,7 @@
 
 const API_URL = 'http://localhost:3000/api';
 
-async function carregarTodosAgendamentos(){
+async function carregarTodosAgendamentos() {
     try {
         // Como é uma rota administrativa de MVP, no momento ela está protegida pelo mesmo
         // middleware JWT. Portanto, precisamos de estar logados para aceder (usando o token local)
@@ -22,7 +22,7 @@ async function carregarTodosAgendamentos(){
 
         const agendamentos = await response.json();
         const tbody = document.getElementById('tabelaAdmin');
-        tbody.innerHTML = '';
+        tbody.innerHTML = ''; 
 
         if (agendamentos.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum agendamento no sistema.</td></tr>';
@@ -31,7 +31,7 @@ async function carregarTodosAgendamentos(){
 
         agendamentos.forEach(agendamento => {
             const dataFormatada = new Date(agendamento.data_hora).toLocaleString('pt-PT');
-
+            
             // Definindo as cores dos crachás (badges) conforme o estado
             let corBadge = 'primary'; // Agendado
             if (agendamento.status === 'Cancelado') corBadge = 'danger';
