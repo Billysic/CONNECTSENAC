@@ -47,7 +47,7 @@ async function carregarMeusAgendamentos(){
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${dataFormatada}</td>
-                <td>Serviço #${agendamento.servico_id}</td>
+                <td>${agendamento.servico_nome || 'Serviço não cadastrado'}</td>
                 <td><span class="badge bg-${agendamento.status === 'Agendado' ? 'primary' : (agendamento.status === 'Cancelado' ? 'danger' : 'success')}">${agendamento.status}</span></td>
                 <td>${botaoAcao}</td>
             `;
