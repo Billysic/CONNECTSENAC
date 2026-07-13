@@ -31,7 +31,7 @@ function criarTabelas(){
         )
     `);
 
-    // 2. Tabela de Serviços (Ofertados pela instituição)
+    // 2. Tabela de Serviços
     db.run(`
         CREATE TABLE IF NOT EXISTS servicos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,7 +39,17 @@ function criarTabelas(){
             descricao TEXT,
             duracao_minutos INTEGER NOT NULL
         )
-    `);
+    `, () => {
+        // Seeding: Popula os serviços iniciais automaticamente caso não existam
+        db.get("SELECT COUNT(*) as count FROM servicos", (err, row) => {
+            if (row && row.count === 0) {
+                db.run("INSERT INTO servicos (id, nome, duracao_minutos) VALUES (1, 'Corte de Cabelo (Modelo)', 60)");
+                db.run("INSERT INTO servicos (id, nome, duracao_minutos) VALUES (2, 'Maquilhagem Artística', 90)");
+                db.run("INSERT INTO servicos (id, nome, duracao_minutos) VALUES (3, 'Manicure e Pedicure', 60)");
+                console.log('Serviços iniciais inseridos com sucesso.');
+            }
+        });
+    });
 
     // 3. Tabela de Agendamentos (O coração das regras de negócio)
     db.run(`

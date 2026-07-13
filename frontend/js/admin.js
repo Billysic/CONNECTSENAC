@@ -2,9 +2,12 @@
 
 // const API_URL = 'http://localhost:3000/api';
 
+<<<<<<< HEAD
 const FALLBACK_BASE_URL = 'http://localhost:3000/api';
 const API_URL = window.location.protocol === 'file:' ? FALLBACK_BASE_URL : `${window.location.origin}/api`;
 
+=======
+>>>>>>> master-dev
 async function carregarTodosAgendamentos() {
     try {
         // Como é uma rota administrativa de MVP, no momento ela está protegida pelo mesmo
