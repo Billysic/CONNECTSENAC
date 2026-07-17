@@ -74,6 +74,10 @@
                 const cursos = await response.json();
                 accordion.innerHTML = '';
 
+                if (!Array.isArray(cursos)) {
+                    throw new Error('Resposta inválida do servidor.');
+                }
+
                 if (cursos.length === 0) {
                     accordion.innerHTML = '<div class="alert alert-info border-0 shadow-sm">Nenhum curso ativo vinculado ao seu perfil de momento.</div>';
                     return;

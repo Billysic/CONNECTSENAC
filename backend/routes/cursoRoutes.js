@@ -6,14 +6,14 @@ const cursoController = require('../controllers/cursoController');
 // Importando os nossos seguranças
 const authMiddleware = require('../middlewares/authMiddleware');
 const autorizarPerfis = require('../middlewares/rbacMiddleware');
-// Apenas Admin e Coordenador podem alterar ou arquivar os cursos
-router.put('/:id', authMiddleware, autorizarPerfis('admin', 'coordenador'), cursoController.atualizar);
-router.delete('/:id', authMiddleware, autorizarPerfis('admin', 'coordenador'), cursoController.arquivar);
 
 // ----------------------------------------------------------------------
 // Rota Aberta para Logados: Qualquer um com token pode ver a vitrine
 // ----------------------------------------------------------------------
 router.get('/ativos', authMiddleware, cursoController.listarAtivos);
+
+// Nova Rota Restrita (Gestão Completa)
+router.get('/admin', authMiddleware, autorizarPerfis('admin', 'coordenador'), cursoController.listarTodosAdmin);
 
 // ----------------------------------------------------------------------
 // Rotas Protegidas: Apenas a coordenação e a administração podem criar cursos
@@ -24,5 +24,8 @@ router.post(
     autorizarPerfis('admin', 'coordenador'), // <-- O RBAC EM AÇÃO AQUI!
     cursoController.criar
 );
+
+router.put('/:id', authMiddleware, autorizarPerfis('admin', 'coordenador'), cursoController.atualizar);
+router.delete('/:id', authMiddleware, autorizarPerfis('admin', 'coordenador'), cursoController.arquivar);
 
 module.exports = router;

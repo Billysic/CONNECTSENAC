@@ -3,8 +3,36 @@ const supabase = require('../config/database');
 
 // 1. Função minhasTurmas
 exports.minhasTurmas = async (req, res) => {
+    const profissional_id = req.usuario.id;
+
     try {
-        res.status(200).json({ mensagem: 'Rota de minhas turmas funcionando perfeitamente!' });
+        const { data: cursos, error } = await supabase
+            .from('cursos')
+            .select(`
+                id,
+                nome,
+                descricao,
+                localizacao,
+                foto_url,
+                profissional_id,
+                disponibilidades (
+                    id,
+                    data_hora,
+                    vagas_totais,
+                    vagas_ocupadas,
+                    agendamentos (
+                        id,
+                        status,
+                        usuarios ( id, nome, email, telefone )
+                    )
+                )
+            `)
+            .eq('profissional_id', profissional_id)
+            .eq('status', 'ativo')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json(cursos || []);
     } catch (error) {
         console.error('Erro ao buscar turmas:', error.message);
         res.status(500).json({ erro: 'Erro interno ao carregar turmas.' });
