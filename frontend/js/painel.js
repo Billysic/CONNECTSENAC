@@ -4,7 +4,21 @@ const FALLBACK_BASE_URL = 'http://localhost:3000/api';
 const API_URL = window.location.protocol === 'file:' ? FALLBACK_BASE_URL : `${window.location.origin}/api`;
 
 const token = localStorage.getItem('token');
-if (!token) window.location.href = 'index.html';
+if (!token) {
+    window.location.href = 'index.html';
+}
+
+try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    // Se o token estiver expirado (exp em segundos)
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+        localStorage.removeItem('token');
+        window.location.href = 'index.html';
+    }
+} catch (e) {
+    localStorage.removeItem('token');
+    window.location.href = 'index.html';
+}
 
 document.getElementById('btnSair').addEventListener('click', () => {
     localStorage.removeItem('token');
@@ -374,6 +388,21 @@ async function carregarMeusFeedbacks(){
         divFeedbacks.innerHTML = '<p class="text-danger">Erro ao carregar o histórico de avaliações.</p>';
     }
 }
+
+// [QoL] Lógica de Navegação de Retorno
+document.addEventListener('DOMContentLoaded', () => {
+    // Decodifica o token para ver quem está logado
+    if(token) {
+        const payloadToken = JSON.parse(atob(token.split('.')[1]));
+        const navbar = document.querySelector('.navbar-nav');
+
+        if (payloadToken.perfil === 'admin' || payloadToken.perfil === 'coordenador') {
+            navbar.innerHTML += `<li class="nav-item"><a class="nav-link text-warning fw-bold" href="admin.html">⬅️ Voltar ao Backoffice</a></li>`;
+        } else if (payloadToken.perfil === 'profissional') {
+            navbar.innerHTML += `<li class="nav-item"><a class="nav-link text-warning fw-bold" href="profissional.html">⬅️ Voltar à Pauta</a></li>`;
+        }
+    }
+});
 
 // Inicializa a página carregando tudo
 carregarMeusFeedbacks();

@@ -43,8 +43,19 @@ app.use('/api/admin', require('./backend/routes/adminRoutes'));
 app.use('/api/profissional', require('./backend/routes/profissionalRoutes'));
 app.use('/api/feedbacks', require('./backend/routes/feedbackRoutes'));
 
+// Tratamento de rota 404 para APIs não encontradas
+app.use('/api', (req, res) => {
+    res.status(404).json({ erro: 'Endpoint da API não encontrado.' });
+});
+
+// Middleware Global de Tratamento de Erros
+app.use((err, req, res, next) => {
+    console.error('❌ [ERRO NÃO TRATADO]:', err.stack || err.message);
+    res.status(500).json({ erro: 'Ocorreu um erro interno no servidor.' });
+});
+
 // Iniciando o servidor
 app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}!`);
-    console.log(`Acesse: http://localhost:${PORT}/api/status`);
+    console.log(`Acesse: http://localhost:${PORT}`);
 }); 

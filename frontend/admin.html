@@ -1,24 +1,62 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connect Senac - Central de Administração</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .nav-tabs .nav-link { border: none; color: #555; font-weight: 600; padding: 1rem 1.5rem; }
-        .nav-tabs .nav-link.active { color: #004a8d; border-bottom: 3px solid #004a8d; background: transparent; }
-        .card { border: none; border-radius: 12px; }
-        .btn-brand { background-color: #004a8d; color: white; font-weight: 600; border-radius: 8px; }
-        .btn-brand:hover { background-color: #003366; color: white; }
-        .section-title { color: #004a8d; font-weight: 700; font-size: 1.2rem; }</style>
+        body {
+            background-color: #f4f7f6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            color: #555;
+            font-weight: 600;
+            padding: 1rem 1.5rem;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: #004a8d;
+            border-bottom: 3px solid #004a8d;
+            background: transparent;
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+        }
+
+        .btn-brand {
+            background-color: #004a8d;
+            color: white;
+            font-weight: 600;
+            border-radius: 8px;
+        }
+
+        .btn-brand:hover {
+            background-color: #003366;
+            color: white;
+        }
+
+        .section-title {
+            color: #004a8d;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+    </style>
 </head>
+
 <body>
 
     <nav class="navbar navbar-expand-lg navbar-dark shadow-sm" style="background-color: #004a8d;">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="#">Connect Senac <span class="badge bg-light text-dark ms-2">Admin Hub</span></a>
+            <a class="navbar-brand fw-bold" href="#">Connect Senac <span class="badge bg-light text-dark ms-2">Admin
+                    Hub</span></a>
+            <a href="painel.html" class="btn btn-sm btn-outline-warning me-2 fw-bold">👁️ Ver Visão do Modelo</a>
             <button class="btn btn-outline-light btn-sm" id="btnSair">Sair</button>
         </div>
     </nav>
@@ -34,17 +72,34 @@
 
         <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
             <li class="nav-item">
-                <button class="nav-link active" id="visao-tab" data-bs-toggle="tab" data-bs-target="#visao" type="button">📊 Visão Geral</button>
+                <button class="nav-link active" id="visao-tab" data-bs-toggle="tab" data-bs-target="#visao"
+                    type="button">📊 Visão Geral</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link" id="usuarios-tab" data-bs-toggle="tab" data-bs-target="#usuarios" type="button">👥 Utilizadores & Moderação</button>
+                <button class="nav-link" id="usuarios-tab" data-bs-toggle="tab" data-bs-target="#usuarios"
+                    type="button">👥 Utilizadores & Moderação</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link" id="equipa-tab" data-bs-toggle="tab" data-bs-target="#equipa" type="button">🔑 Criar Colaborador</button>
+                <button class="nav-link" id="equipa-tab" data-bs-toggle="tab" data-bs-target="#equipa" type="button">🔑
+                    Criar Colaborador</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link" id="catalogo-tab" data-bs-toggle="tab" data-bs-target="#catalogo" type="button">🏷️ Gestão de Cursos</button>
+                <button class="nav-link" id="catalogo-tab" data-bs-toggle="tab" data-bs-target="#catalogo"
+                    type="button">🏷️ Gestão de Cursos</button>
             </li>
+            <li class="nav-item">
+                <button class="nav-link" id="pautas-tab" data-bs-toggle="tab" data-bs-target="#pautas" type="button">📅 Pautas Globais</button>
+            </li>
+            <div class="tab-pane fade" id="pautas">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-4" style="color: #004a8d;">📅 Pautas e Inscrições por Turma</h5>
+                    <div class="accordion shadow-sm" id="accordionPautasGlobais">
+                        <div class="text-center text-muted">A carregar a visão global...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
         </ul>
 
         <div class="tab-content" id="adminTabsContent">
@@ -88,7 +143,9 @@
                 <div class="row g-4">
                     <div class="col-lg-6">
                         <div class="card shadow-sm">
-                            <div class="card-header py-3"><h6 class="mb-0 section-title">📚 Cadastrar Curso</h6></div>
+                            <div class="card-header py-3">
+                                <h6 class="mb-0 section-title">📚 Cadastrar Curso</h6>
+                            </div>
                             <div class="card-body p-4">
                                 <form id="formCurso">
                                     <div class="form-floating mb-3">
@@ -102,7 +159,8 @@
                                         <label for="selectProfissional">Professor Responsável</label>
                                     </div>
                                     <div class="form-floating mb-3">
-                                        <textarea class="form-control" id="descricaoCurso" style="height: 80px" required></textarea>
+                                        <textarea class="form-control" id="descricaoCurso" style="height: 80px"
+                                            required></textarea>
                                         <label>Descrição</label>
                                     </div>
                                     <div class="form-floating mb-3">
@@ -110,21 +168,24 @@
                                         <label>Benefícios</label>
                                     </div>
                                     <div class="form-floating mb-3">
-                                        <textarea class="form-control" id="restricoesCurso" style="height: 60px"></textarea>
+                                        <textarea class="form-control" id="restricoesCurso"
+                                            style="height: 60px"></textarea>
                                         <label>Restrições para Modelos</label>
                                     </div>
-                                    
+
                                     <div class="form-floating mb-3">
-                                        <input type="url" class="form-control" id="fotoCurso" placeholder="https://exemplo.com/imagem.jpg">
+                                        <input type="url" class="form-control" id="fotoCurso"
+                                            placeholder="https://exemplo.com/imagem.jpg">
                                         <label>URL da Imagem de Capa</label>
                                     </div>
                                     <div class="form-floating mb-3">
-                                        <input type="text" class="form-control" id="localCurso" value="SENAC - Santo Antônio de Jesus, BA" required>
+                                        <input type="text" class="form-control" id="localCurso"
+                                            value="SENAC - Santo Antônio de Jesus, BA" required>
                                         <label>Localização / Endereço</label>
                                     </div>
-                                    
+
                                     <div id="msgCurso" class="mb-3 text-center small fw-bold"></div>
-                                    <button type="submit" class="btn btn-brand w-100">Salvar Curso</button> 
+                                    <button type="submit" class="btn btn-brand w-100">Salvar Curso</button>
                                 </form>
                             </div>
                         </div>
@@ -132,7 +193,9 @@
 
                     <div class="col-lg-6">
                         <div class="card shadow-sm">
-                            <div class="card-header py-3"><h6 class="mb-0 section-title">📅 Disponibilizar Vagas</h6></div>
+                            <div class="card-header py-3">
+                                <h6 class="mb-0 section-title">📅 Disponibilizar Vagas</h6>
+                            </div>
                             <div class="card-body p-4">
                                 <form id="formVagas">
                                     <div class="form-floating mb-3">
@@ -144,13 +207,15 @@
                                     <div class="row g-2 mb-3">
                                         <div class="col-8">
                                             <div class="form-floating">
-                                                <input type="datetime-local" class="form-control" id="dataHora" required>
+                                                <input type="datetime-local" class="form-control" id="dataHora"
+                                                    required>
                                                 <label>Data e Hora</label>
                                             </div>
                                         </div>
                                         <div class="col-4">
                                             <div class="form-floating">
-                                                <input type="number" class="form-control" id="vagasTotais" min="1" required>
+                                                <input type="number" class="form-control" id="vagasTotais" min="1"
+                                                    required>
                                                 <label>Vagas</label>
                                             </div>
                                         </div>
@@ -179,7 +244,9 @@
                                     </tr>
                                 </thead>
                                 <tbody id="tabelaCursosBody">
-                                    <tr><td colspan="5" class="text-center text-muted py-4">A carregar catálogo...</td></tr>
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">A carregar catálogo...</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -191,6 +258,26 @@
                 <div class="card shadow-sm">
                     <div class="card-body p-4">
                         <h5 class="fw-bold mb-4" style="color: #004a8d;">👥 Base de Utilizadores e Histórico</h5>
+                        <!-- Bloco de Filtros Inteligentes -->
+                        <div class="row g-2 mb-3 bg-light p-3 rounded border">
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" id="filtroTextoUser"
+                                    placeholder="🔍 Buscar por Nome ou E-mail...">
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select" id="filtroPerfilUser">
+                                    <option value="">Todos os Perfis</option>
+                                    <option value="candidato">Candidatos (Modelos)</option>
+                                    <option value="profissional">Profissionais (Professores)</option>
+                                    <option value="coordenador">Coordenadores</option>
+                                    <option value="admin">Administradores</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <!-- Opcional: Um botão para limpar os filtros -->
+                                <button class="btn btn-outline-secondary w-100" id="btnLimparFiltros">Limpar</button>
+                            </div>
+                        </div>
                         <div class="table-responsive">
                             <table class="table align-middle table-hover">
                                 <thead class="table-light">
@@ -198,7 +285,8 @@
                                         <th>Nome</th>
                                         <th>E-mail / Contato</th>
                                         <th>Função</th>
-                                        <th>Matrícula Ativa</th> <th class="text-center">Confirmados</th>
+                                        <th>Matrícula Ativa</th>
+                                        <th class="text-center">Confirmados</th>
                                         <th class="text-center">Concluídos</th>
                                         <th class="text-center">Cancelados</th>
                                         <th class="text-end">Ações</th>
@@ -206,7 +294,8 @@
                                 </thead>
                                 <tbody id="tabelaUsuariosBody">
                                     <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">A carregar utilizadores...</td>
+                                        <td colspan="7" class="text-center text-muted py-4">A carregar utilizadores...
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -220,7 +309,8 @@
                     <div class="col-md-8 col-lg-6">
                         <div class="card shadow-sm">
                             <div class="card-body p-5">
-                                <h5 class="fw-bold text-center mb-4" style="color: #004a8d;">🔑 Registar Membro da Equipa</h5>
+                                <h5 class="fw-bold text-center mb-4" style="color: #004a8d;">🔑 Registar Membro da
+                                    Equipa</h5>
                                 <form id="formColaborador">
                                     <div class="form-floating mb-3">
                                         <input type="text" class="form-control" id="colabNome" required>
@@ -265,12 +355,12 @@
                         <div class="modal-body p-4">
                             <form id="formEditarCurso">
                                 <input type="hidden" id="editCursoId">
-            
+
                                 <div class="form-floating mb-3">
                                     <input type="text" class="form-control" id="editNome" required>
                                     <label>Nome do Curso</label>
                                 </div>
-            
+
                                 <div class="row g-3 mb-3">
                                     <div class="col-md-6">
                                         <div class="form-floating">
@@ -285,17 +375,18 @@
                                         </div>
                                     </div>
                                 </div>
-            
+
                                 <div class="form-floating mb-3">
-                                    <textarea class="form-control" id="editDescricao" style="height: 80px" required></textarea>
+                                    <textarea class="form-control" id="editDescricao" style="height: 80px"
+                                        required></textarea>
                                     <label>Descrição</label>
                                 </div>
-            
+
                                 <div class="form-floating mb-3">
                                     <input type="url" class="form-control" id="editFoto">
                                     <label>URL da Imagem de Capa</label>
                                 </div>
-            
+
                                 <div id="msgEditCurso" class="mb-3 text-center small fw-bold"></div>
                                 <button type="submit" class="btn btn-primary w-100 fw-bold">Atualizar Curso</button>
                             </form>
@@ -310,4 +401,5 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/admin.js"></script>
 </body>
+
 </html>

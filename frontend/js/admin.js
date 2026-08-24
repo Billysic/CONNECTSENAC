@@ -4,17 +4,35 @@ const FALLBACK_BASE_URL = 'http://localhost:3000/api';
 const API_URL = window.location.protocol === 'file:' ? FALLBACK_BASE_URL : `${window.location.origin}/api`;
 
 const token = localStorage.getItem('token');
-if (!token) window.location.href = 'index.html';
+if (!token) {
+    window.location.href = 'index.html';
+}
 
 // Descodificar o JWT para saber o nome e perfil do Admin conectado
-const payloadToken = JSON.parse(atob(token.split('.')[1]));
-document.getElementById('userNome').textContent = payloadToken.email.split('@')[0];
-document.getElementById('userPerfil').textContent = payloadToken.perfil.toUpperCase();
+let payloadToken = null;
+try {
+    payloadToken = JSON.parse(atob(token.split('.')[1]));
+    
+    // RBAC: Apenas admin e coordenador podem acessar este painel
+    if (payloadToken.perfil === 'profissional') {
+        window.location.href = 'profissional.html';
+    } else if (payloadToken.perfil !== 'admin' && payloadToken.perfil !== 'coordenador') {
+        window.location.href = 'painel.html';
+    }
+} catch (e) {
+    localStorage.removeItem('token');
+    window.location.href = 'index.html';
+}
 
-// Se o utilizador for Coordenador, ocultamos a Tab de criar novos colaboradores (RBAC)
-if (payloadToken.perfil === 'coordenador') {
-    const equipaTab = document.getElementById('equipa-tab');
-    if(equipaTab) equipaTab.style.display = 'none';
+if (payloadToken) {
+    document.getElementById('userNome').textContent = payloadToken.email.split('@')[0];
+    document.getElementById('userPerfil').textContent = (payloadToken.perfil || '').toUpperCase();
+
+    // Se o utilizador for Coordenador, ocultamos a Tab de criar novos colaboradores (RBAC)
+    if (payloadToken.perfil === 'coordenador') {
+        const equipaTab = document.getElementById('equipa-tab');
+        if (equipaTab) equipaTab.style.display = 'none';
+    }
 }
 
 document.getElementById('btnSair').addEventListener('click', () => {
@@ -45,71 +63,147 @@ async function carregarMetricas(){
 // ============================================================================
 // 2. GESTÃO DE UTILIZADORES & HISTÓRICO (MODERAÇÃO)
 // ============================================================================
+// Variável global para guardar os dados da tabela em memória
+let baseUtilizadores = [];
+
+// ==========================================
+// MÓDULO DE GESTÃO DE UTILIZADORES
+// ==========================================
 async function carregarUtilizadores(){
-    const tbody = document.getElementById('tabelaUsuariosBody');
     try {
         const response = await fetch(`${API_URL}/admin/usuarios`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        const users = await response.json();
+        baseUtilizadores = await response.json();
+        renderizarTabelaUtilizadores(baseUtilizadores); // Renderiza a lista completa
+    } catch (error) {
+        document.getElementById('tabelaUsuariosBody').innerHTML = '<tr><td colspan="8" class="text-danger text-center">Erro ao ligar ao servidor.</td></tr>';
+    }
+}
 
-        tbody.innerHTML = '';
-        if (users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum utilizador registado.</td></tr>';
-            return;
+function renderizarTabelaUtilizadores(lista){
+    const tbody = document.getElementById('tabelaUsuariosBody');
+    tbody.innerHTML = '';
+
+    if (lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Nenhum utilizador encontrado com estes filtros.</td></tr>';
+        return;
+    }
+
+    lista.forEach(user => {
+        const statusBadge = user.is_bloqueado
+            ? '<span class="badge bg-danger">Bloqueado</span>'
+            : '<span class="badge bg-success">Ativo</span>';
+
+        // 1. Mensagem de WhatsApp Dinâmica
+        const telLimpo = user.telefone.replace(/\D/g, ''); // Remove formatações
+        const msgZap = encodeURIComponent(`Olá, ${user.nome}! Aqui é a Coordenação do Connect Senac.`);
+        const btnZap = `<a href="https://wa.me/55${telLimpo}?text=${msgZap}" target="_blank" class="btn btn-sm btn-outline-success ms-1" title="Enviar WhatsApp">💬</a>`;
+
+        // 2. Select Dinâmico de Perfis (Apenas Admin vê como <select>, os outros veem como texto)
+        let seletorPerfil = `<span class="badge bg-secondary">${user.perfil.toUpperCase()}</span>`;
+        if (payloadToken.perfil === 'admin') {
+            seletorPerfil = `
+                <select class="form-select form-select-sm" style="width: 120px;" onchange="alterarPerfil('${user.id}', this.value)">
+                    <option value="candidato" ${user.perfil === 'candidato' ? 'selected' : ''}>Candidato</option>
+                    <option value="profissional" ${user.perfil === 'profissional' ? 'selected' : ''}>Professor</option>
+                    <option value="coordenador" ${user.perfil === 'coordenador' ? 'selected' : ''}>Coord.</option>
+                    <option value="admin" ${user.perfil === 'admin' ? 'selected' : ''}>Admin</option>
+                </select>
+            `;
         }
 
-        // Substitua o loop 'users.forEach' na função carregarUtilizadores por esta versão:
-        users.forEach(user => {
-            const statusBadge = user.is_bloqueado
-                ? '<span class="badge bg-danger">Bloqueado</span>'
-                : '<span class="badge bg-success">Ativo</span>';
-        
-            // Controle de Exclusão por RBAC na Interface
-            // Coordenador só vê botão excluir ativo se for candidato. Admin vê ativo para todos.
-            const podeExcluir = payloadToken.perfil === 'admin' || (payloadToken.perfil === 'coordenador' && user.perfil === 'candidato');
-        
-            const btnExcluir = podeExcluir
-                ? `<button class="btn btn-sm btn-danger ms-1" onclick="excluirUsuario('${user.id}', '${user.nome}')">Excluir</button>`
-                : '';
-        
-            const btnBloqueio = payloadToken.perfil === 'admin'
-                ? `<button class="btn btn-sm ${user.is_bloqueado ? 'btn-outline-success' : 'btn-outline-danger'}"
-                    onclick="toggleBloqueio('${user.id}', ${user.is_bloqueado})">
-                    ${user.is_bloqueado ? 'Liberar' : 'Bloquear'}
-                   </button>`
-                : '';
-        
-            const row = `
-                <tr>
-                    <td>
-                        <div class="fw-bold">${user.nome}</div>
-                        <div class="text-muted small">Membro desde: ${new Date(user.created_at).toLocaleDateString('pt-BR')}</div>
-                    </td>
-                    <td>
-                        <div>${user.email}</div>
-                        <div class="text-muted small">${user.telefone}</div>
-                    </td>
-                    <td>
-                        <span class="badge bg-secondary">${user.perfil.toUpperCase()}</span>
-                        <div class="mt-1">${statusBadge}</div>
-                    </td>
-                    <td><span class="text-muted small">${user.cursos_ativos}</span></td>
-                    <td class="text-center fw-bold text-primary">${user.total_agendados}</td>
-                    <td class="text-center fw-bold text-success">${user.total_concluidos}</td>
-                    <td class="text-center fw-bold text-danger">${user.total_cancelados}</td>
-                    <td class="text-end">
-                        <div class="d-flex justify-content-end">
-                            ${btnBloqueio}
-                            ${btnExcluir}
-                        </div>
-                    </td>
-                </tr>
-            `;
-            tbody.innerHTML += row;
+        const btnBloqueio = payloadToken.perfil === 'admin'
+            ? `<button class="btn btn-sm ${user.is_bloqueado ? 'btn-outline-success' : 'btn-outline-danger'} ms-1" onclick="toggleBloqueio('${user.id}', ${user.is_bloqueado})">🔒</button>` : '';
+
+        const podeExcluir = payloadToken.perfil === 'admin' || (payloadToken.perfil === 'coordenador' && user.perfil === 'candidato');
+        const btnExcluir = podeExcluir
+            ? `<button class="btn btn-sm btn-danger ms-1" onclick="excluirUsuario('${user.id}', '${user.nome}')">🗑️</button>` : '';
+
+        const row = `
+            <tr>
+                <td><div class="fw-bold">${user.nome}</div></td>
+                <td>
+                    <div class="small">${user.email}</div>
+                    <div class="text-muted small">${user.telefone}</div>
+                </td>
+                <td>${seletorPerfil}</td>
+                <td><span class="text-muted small">${user.cursos_ativos || '-'}</span></td>
+                <td class="text-center fw-bold text-primary">${user.total_agendados}</td>
+                <td class="text-center fw-bold text-success">${user.total_concluidos}</td>
+                <td class="text-center fw-bold text-danger">${user.total_cancelados}</td>
+                <td class="text-end text-nowrap">
+                    ${btnZap}
+                    ${btnBloqueio}
+                    ${btnExcluir}
+                </td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+}
+
+// -----------------------------------------
+// LÓGICA DOS FILTROS (Pesquisa em Memória)
+// -----------------------------------------
+function aplicarFiltrosUsuarios(){
+    const termo = document.getElementById('filtroTextoUser').value.toLowerCase();
+    const perfil = document.getElementById('filtroPerfilUser').value;
+
+    const listaFiltrada = baseUtilizadores.filter(user => {
+        // Verifica se o texto digitado bate com o nome OU com o e-mail
+        const matchTexto = user.nome.toLowerCase().includes(termo) || user.email.toLowerCase().includes(termo);
+        // Verifica se o perfil escolhido bate (se estiver vazio, aceita todos)
+        const matchPerfil = perfil === "" || user.perfil === perfil;
+
+        return matchTexto && matchPerfil;
+    });
+
+    renderizarTabelaUtilizadores(listaFiltrada);
+}
+
+// Ouve as digitações e cliques para filtrar em tempo real!
+const inputBusca = document.getElementById('filtroTextoUser');
+const selectPerfil = document.getElementById('filtroPerfilUser');
+const btnLimpar = document.getElementById('btnLimparFiltros');
+
+if(inputBusca) inputBusca.addEventListener('input', aplicarFiltrosUsuarios);
+if(selectPerfil) selectPerfil.addEventListener('change', aplicarFiltrosUsuarios);
+if(btnLimpar) {
+    btnLimpar.addEventListener('click', () => {
+        inputBusca.value = '';
+        selectPerfil.value = '';
+        renderizarTabelaUtilizadores(baseUtilizadores);
+    });
+}
+
+// -----------------------------------------
+// FUNÇÃO DE ALTERAÇÃO DE PERFIL VIA API
+// -----------------------------------------
+async function alterarPerfil(idUsuario, novoPerfil){
+    if (!confirm(`Deseja alterar o perfil deste utilizador para ${novoPerfil.toUpperCase()}?`)) {
+        carregarUtilizadores(); // Se cancelar, volta o select ao normal
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/admin/usuarios/${idUsuario}/perfil`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ perfil: novoPerfil })
         });
+
+        if (response.ok) {
+            alert('Perfil atualizado com sucesso!');
+            carregarUtilizadores(); // Atualiza a base de dados
+        } else {
+            const data = await response.json();
+            alert(data.erro);
+            carregarUtilizadores(); // Reverte
+        }
     } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Erro ao ligar ao servidor.</td></tr>';
+        alert("Erro ao alterar o perfil.");
+        carregarUtilizadores(); // Reverte
     }
 }
 
@@ -477,9 +571,96 @@ if (formEditarCurso) {
     });
 }
 
+// ==========================================
+// MÓDULO DE PAUTAS GLOBAIS (VISÃO COORDENAÇÃO)
+// ==========================================
+async function carregarPautasGlobais(){
+    const accordion = document.getElementById('accordionPautasGlobais');
+    // Se o elemento não existir na tela (por segurança), interrompe a função
+    if (!accordion) return;
 
+    try {
+        const response = await fetch(`${API_URL}/admin/pautas`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const cursos = await response.json();
 
-// Chame essa função na inicialização do arquivo (no final do admin.js)
+        accordion.innerHTML = '';
+
+        if (cursos.length === 0) {
+            accordion.innerHTML = '<div class="alert alert-info border-0 shadow-sm mt-3">Nenhuma pauta ativa no momento.</div>';
+            return;
+        }
+
+        cursos.forEach((curso, index) => {
+            let horariosHTML = '';
+
+            // Pega o nome do professor ou avisa se não tiver
+            const nomeProfessor = curso.usuarios ? curso.usuarios.nome : 'Sem Professor Vinculado';
+
+            if (curso.disponibilidades && curso.disponibilidades.length > 0) {
+                // Ordenar por data
+                curso.disponibilidades.sort((a, b) => new Date(a.data_hora) - new Date(b.data_hora));
+
+                curso.disponibilidades.forEach(disp => {
+                    const dataFormatada = new Date(disp.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+                    const agendamentosAtivos = disp.agendamentos ? disp.agendamentos.filter(a => a.status !== 'cancelado') : [];
+
+                    let tabelaModelos = '';
+                    if (agendamentosAtivos.length === 0) {
+                        tabelaModelos = `<p class="text-muted small mb-0 mt-2">Nenhum modelo agendado.</p>`;
+                    } else {
+                        let linhas = agendamentosAtivos.map(ag => `
+                            <tr>
+                                <td>${ag.usuarios.nome}</td>
+                                <td><a href="https://wa.me/55${ag.usuarios.telefone.replace(/\D/g, '')}" target="_blank" class="text-decoration-none text-success">📱 ${ag.usuarios.telefone}</a></td>
+                                <td><span class="badge ${ag.status === 'concluido' ? 'bg-success' : 'bg-primary'}">${ag.status.toUpperCase()}</span></td>
+                            </tr>
+                        `).join('');
+
+                        tabelaModelos = `
+                            <table class="table table-sm mt-3 border">
+                                <thead class="table-light"><tr><th>Modelo</th><th>Contato</th><th>Status</th></tr></thead>
+                                <tbody>${linhas}</tbody>
+                            </table>`;
+                    }
+
+                    horariosHTML += `
+                        <div class="mb-4 p-3 bg-white border rounded shadow-sm">
+                            <div class="fw-bold text-dark border-bottom pb-2">📅 Data: ${dataFormatada} <span class="badge bg-secondary float-end">Ocupação: ${disp.vagas_ocupadas} / ${disp.vagas_totais}</span></div>
+                            ${tabelaModelos}
+                        </div>
+                    `;
+                });
+            }
+
+            const itemOpen = index === 0 ? 'show' : '';
+            const btnCollapsed = index === 0 ? '' : 'collapsed';
+
+            // Monta o cabeçalho da "Sanfona" com o nome do curso e o professor
+            accordion.innerHTML += `
+                <div class="accordion-item border-0 border-bottom">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button ${btnCollapsed}" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePauta${curso.id}">
+                            <strong class="me-2 text-primary">📘 ${curso.nome}</strong>
+                            <span class="badge bg-info text-dark">Prof: ${nomeProfessor}</span>
+                        </button>
+                    </h2>
+                    <div id="collapsePauta${curso.id}" class="accordion-collapse collapse ${itemOpen}" data-bs-parent="#accordionPautasGlobais">
+                        <div class="accordion-body bg-light">
+                            ${horariosHTML || '<p class="text-muted mt-2">Sem horários abertos para este curso.</p>'}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    } catch (error) {
+        console.error("Erro ao carregar as pautas globais:", error);
+        accordion.innerHTML = '<div class="text-danger p-4 text-center">Erro ao carregar os dados. Verifique a conexão com o servidor.</div>';
+    }
+}
+
+carregarPautasGlobais();
 carregarProfissionaisNoSelect();
 // Inicialização de ecrã
 carregarMetricas();

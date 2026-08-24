@@ -22,7 +22,7 @@ cron.schedule('* * * * *', async () => {
                 id,
                 status,
                 usuarios ( nome, email, telefone ),
-                disponibilidades ( data_hora, cursos ( nome ) )
+                disponibilidades!inner ( data_hora, cursos ( nome ) )
             `)
             .eq('status', 'agendado')
             // Filtro de tempo: data_hora é MAIOR que agora, mas MENOR que amanhã à mesma hora
@@ -37,9 +37,7 @@ cron.schedule('* * * * *', async () => {
 
         // 2. Disparar os avisos
         agendamentos.forEach(ag => {
-            // Nota Didática: Como este script roda a cada minuto, ele enviaria o aviso várias vezes.
-            // Para resolver isto no código sem mexer no banco, podemos verificar se a diferença de tempo
-            // é *exatamente* 24 horas (com uma margem de 1 minuto).
+            if (!ag.disponibilidades || !ag.disponibilidades.data_hora || !ag.usuarios) return;
 
             const dataCurso = new Date(ag.disponibilidades.data_hora);
             const diferencaEmMinutos = Math.floor((dataCurso - agora) / (1000 * 60));
@@ -47,12 +45,12 @@ cron.schedule('* * * * *', async () => {
             // Só envia se faltarem entre 1439 e 1440 minutos (exatas 24h)
             // Ou se faltarem exatos 180 minutos (3 horas)
             if (diferencaEmMinutos === 1440 || diferencaEmMinutos === 180) {
-                const curso = ag.disponibilidades.cursos.nome;
-                const cliente = ag.usuarios.nome;
+                const cursoNome = ag.disponibilidades.cursos ? ag.disponibilidades.cursos.nome : 'Curso';
+                const cliente = ag.usuarios.nome || 'Cliente';
                 const horaFormatada = dataCurso.toLocaleString('pt-BR', { timeStyle: 'short' });
 
                 console.log(`\n📧 [EMAIL ENVIADO] Para: ${ag.usuarios.email}`);
-                console.log(`Olá, ${cliente}! Lembramos que o seu agendamento para ${curso} é amanhã/hoje às ${horaFormatada}.`);
+                console.log(`Olá, ${cliente}! Lembramos que o seu agendamento para ${cursoNome} é em breve às ${horaFormatada}.`);
                 console.log(`Em caso de imprevistos, cancele na plataforma com 2 horas de antecedência.\n`);
             }
         });

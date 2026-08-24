@@ -20,4 +20,6 @@ router.put(
     profissionalController.concluirAgendamento
 );
 
+router.put('/agendamentos/:id/cancelar', authMiddleware, autorizarPerfis('profissional'), profissionalController.cancelarInscricao);
+
 module.exports = router;
