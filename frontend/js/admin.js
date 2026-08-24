@@ -1,4 +1,4 @@
-// frontend/js/admin.js
+// frontend/js/admin.js - Central Administrativa & Coordenação
 
 const FALLBACK_BASE_URL = 'http://localhost:3000/api';
 const API_URL = window.location.protocol === 'file:' ? FALLBACK_BASE_URL : `${window.location.origin}/api`;
@@ -8,12 +8,14 @@ if (!token) {
     window.location.href = 'index.html';
 }
 
-// Descodificar o JWT para saber o nome e perfil do Admin conectado
 let payloadToken = null;
 try {
     payloadToken = JSON.parse(atob(token.split('.')[1]));
-    
-    // RBAC: Apenas admin e coordenador podem acessar este painel
+    if (payloadToken.exp && payloadToken.exp * 1000 < Date.now()) {
+        localStorage.removeItem('token');
+        window.location.href = 'index.html';
+    }
+
     if (payloadToken.perfil === 'profissional') {
         window.location.href = 'profissional.html';
     } else if (payloadToken.perfil !== 'admin' && payloadToken.perfil !== 'coordenador') {
@@ -25,13 +27,15 @@ try {
 }
 
 if (payloadToken) {
-    document.getElementById('userNome').textContent = payloadToken.email.split('@')[0];
-    document.getElementById('userPerfil').textContent = (payloadToken.perfil || '').toUpperCase();
+    const nomeEl = document.getElementById('userNome');
+    const perfilEl = document.getElementById('userPerfil');
+    if (nomeEl) nomeEl.textContent = payloadToken.email.split('@')[0];
+    if (perfilEl) perfilEl.textContent = (payloadToken.perfil || '').toUpperCase();
 
-    // Se o utilizador for Coordenador, ocultamos a Tab de criar novos colaboradores (RBAC)
+    // Se o usuário for coordenador, ocultar o botão de cadastrar novos colaboradores
     if (payloadToken.perfil === 'coordenador') {
-        const equipaTab = document.getElementById('equipa-tab');
-        if (equipaTab) equipaTab.style.display = 'none';
+        const btnColab = document.getElementById('btnOpenNewColab');
+        if (btnColab) btnColab.style.display = 'none';
     }
 }
 
@@ -40,180 +44,226 @@ document.getElementById('btnSair').addEventListener('click', () => {
     window.location.href = 'index.html';
 });
 
-// ============================================================================
+// Toast Helper
+function showToast(message, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'toast animate-fade-in bg-white border border-slate-200 shadow-xl';
+    
+    let icon = 'info';
+    let iconClass = 'text-blue-600 bg-blue-50';
+    if (type === 'success') { icon = 'check-circle'; iconClass = 'text-emerald-600 bg-emerald-50'; }
+    if (type === 'error') { icon = 'alert-circle'; iconClass = 'text-red-600 bg-red-50'; }
+
+    toast.innerHTML = `
+        <div class="w-8 h-8 rounded-lg ${iconClass} flex items-center justify-center flex-shrink-0">
+            <i data-lucide="${icon}" class="w-4 h-4"></i>
+        </div>
+        <div class="flex-grow text-xs font-semibold text-slate-800 pt-1.5">${message}</div>
+    `;
+
+    container.appendChild(toast);
+    if (window.lucide) lucide.createIcons();
+
+    setTimeout(() => {
+        toast.style.animation = 'slideOutRight 0.3s forwards';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// Global Variables
+let baseUtilizadores = [];
+let baseCursosAdmin = [];
+
+// ==========================================
+// NAVEGAÇÃO DE ABAS ADMIN
+// ==========================================
+function setAdminTab(tabName) {
+    const tabs = ['usuarios', 'cursos', 'horarios', 'pautas'];
+    tabs.forEach(t => {
+        const btn = document.getElementById(`tab-admin-${t}`);
+        const view = document.getElementById(`subview-admin-${t}`);
+        if (t === tabName) {
+            if (btn) {
+                btn.className = 'px-4 py-2 rounded-xl text-xs font-bold transition-all bg-slate-900 text-white shadow-sm flex items-center gap-1.5 whitespace-nowrap';
+            }
+            if (view) view.classList.remove('hidden');
+        } else {
+            if (btn) {
+                btn.className = 'px-4 py-2 rounded-xl text-xs font-semibold transition-all text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 whitespace-nowrap';
+            }
+            if (view) view.classList.add('hidden');
+        }
+    });
+
+    if (tabName === 'usuarios') carregarUtilizadores();
+    if (tabName === 'cursos') carregarCursosAdmin();
+    if (tabName === 'horarios') carregarCursosDropdownGrade();
+    if (tabName === 'pautas') carregarPautasGlobais();
+    if (window.lucide) lucide.createIcons();
+}
+
+// ==========================================
 // 1. CARREGAR MÉTRICAS DO DASHBOARD
-// ============================================================================
-async function carregarMetricas(){
+// ==========================================
+async function carregarMetricas() {
     try {
         const response = await fetch(`${API_URL}/dashboard/metricas`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (response.ok) {
             const data = await response.json();
-            document.getElementById('metricUsuarios').textContent = data.totalUsuarios;
-            document.getElementById('metricAgendados').textContent = data.agendamentos.agendados;
-            document.getElementById('metricConcluidos').textContent = data.agendamentos.concluidos;
-            document.getElementById('metricCancelamento').textContent = data.taxaCancelamento;
+            document.getElementById('metricUsuarios').textContent = data.totalUsuarios || 0;
+            document.getElementById('metricAgendados').textContent = data.agendamentos.agendados || 0;
+            document.getElementById('metricConcluidos').textContent = data.agendamentos.concluidos || 0;
+            document.getElementById('metricCancelamento').textContent = data.taxaCancelamento || '0%';
         }
-    } catch (error) {
-        console.error("Erro ao carregar dados do dashboard.");
+    } catch (e) {
+        console.error("Erro ao carregar métricas.");
     }
 }
 
-// ============================================================================
-// 2. GESTÃO DE UTILIZADORES & HISTÓRICO (MODERAÇÃO)
-// ============================================================================
-// Variável global para guardar os dados da tabela em memória
-let baseUtilizadores = [];
+// ==========================================
+// 2. GESTÃO DE USUÁRIOS & RBAC
+// ==========================================
+async function carregarUtilizadores() {
+    const tbody = document.getElementById('tabelaUsuariosBody');
+    tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Carregando usuários...</td></tr>';
 
-// ==========================================
-// MÓDULO DE GESTÃO DE UTILIZADORES
-// ==========================================
-async function carregarUtilizadores(){
     try {
         const response = await fetch(`${API_URL}/admin/usuarios`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         baseUtilizadores = await response.json();
-        renderizarTabelaUtilizadores(baseUtilizadores); // Renderiza a lista completa
+        renderizarTabelaUsuarios(baseUtilizadores);
     } catch (error) {
-        document.getElementById('tabelaUsuariosBody').innerHTML = '<tr><td colspan="8" class="text-danger text-center">Erro ao ligar ao servidor.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-red-500 font-semibold">Erro ao carregar usuários.</td></tr>';
     }
 }
 
-function renderizarTabelaUtilizadores(lista){
+function filtrarTabelaUsuarios() {
+    const busca = (document.getElementById('adminUserSearch').value || '').toLowerCase();
+    const filtrados = baseUtilizadores.filter(u => 
+        (u.nome || '').toLowerCase().includes(busca) ||
+        (u.email || '').toLowerCase().includes(busca) ||
+        (u.perfil || '').toLowerCase().includes(busca)
+    );
+    renderizarTabelaUsuarios(filtrados);
+}
+
+function renderizarTabelaUsuarios(lista) {
     const tbody = document.getElementById('tabelaUsuariosBody');
     tbody.innerHTML = '';
 
-    if (lista.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Nenhum utilizador encontrado com estes filtros.</td></tr>';
+    if (!lista || lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Nenhum usuário encontrado.</td></tr>';
         return;
     }
 
     lista.forEach(user => {
+        const isRootAdmin = payloadToken.perfil === 'admin';
+        
+        // Status Badge
         const statusBadge = user.is_bloqueado
-            ? '<span class="badge bg-danger">Bloqueado</span>'
-            : '<span class="badge bg-success">Ativo</span>';
+            ? '<span class="badge-status badge-cancelado">Bloqueado</span>'
+            : '<span class="badge-status badge-concluido">Ativo</span>';
 
-        // 1. Mensagem de WhatsApp Dinâmica
-        const telLimpo = user.telefone.replace(/\D/g, ''); // Remove formatações
+        // WhatsApp Link
+        const telLimpo = (user.telefone || '').replace(/\D/g, '');
         const msgZap = encodeURIComponent(`Olá, ${user.nome}! Aqui é a Coordenação do Connect Senac.`);
-        const btnZap = `<a href="https://wa.me/55${telLimpo}?text=${msgZap}" target="_blank" class="btn btn-sm btn-outline-success ms-1" title="Enviar WhatsApp">💬</a>`;
+        const linkZap = telLimpo 
+            ? `<a href="https://wa.me/55${telLimpo}?text=${msgZap}" target="_blank" class="inline-flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-medium">
+                 <i data-lucide="message-circle" class="w-3.5 h-3.5"></i> ${user.telefone}
+               </a>`
+            : `<span class="text-slate-400 text-xs">Sem telefone</span>`;
 
-        // 2. Select Dinâmico de Perfis (Apenas Admin vê como <select>, os outros veem como texto)
-        let seletorPerfil = `<span class="badge bg-secondary">${user.perfil.toUpperCase()}</span>`;
-        if (payloadToken.perfil === 'admin') {
+        // Seletor RBAC
+        let seletorPerfil = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-800">${user.perfil}</span>`;
+        if (isRootAdmin) {
             seletorPerfil = `
-                <select class="form-select form-select-sm" style="width: 120px;" onchange="alterarPerfil('${user.id}', this.value)">
+                <select onchange="alterarPerfil('${user.id}', this.value)" class="p-1 rounded-lg border border-slate-200 text-xs font-semibold bg-slate-50 focus:ring-2 focus:ring-slate-900">
                     <option value="candidato" ${user.perfil === 'candidato' ? 'selected' : ''}>Candidato</option>
-                    <option value="profissional" ${user.perfil === 'profissional' ? 'selected' : ''}>Professor</option>
-                    <option value="coordenador" ${user.perfil === 'coordenador' ? 'selected' : ''}>Coord.</option>
+                    <option value="profissional" ${user.perfil === 'profissional' ? 'selected' : ''}>Docente</option>
+                    <option value="coordenador" ${user.perfil === 'coordenador' ? 'selected' : ''}>Coordenador</option>
                     <option value="admin" ${user.perfil === 'admin' ? 'selected' : ''}>Admin</option>
                 </select>
             `;
         }
 
-        const btnBloqueio = payloadToken.perfil === 'admin'
-            ? `<button class="btn btn-sm ${user.is_bloqueado ? 'btn-outline-success' : 'btn-outline-danger'} ms-1" onclick="toggleBloqueio('${user.id}', ${user.is_bloqueado})">🔒</button>` : '';
+        // Botões de Ação
+        let btnBloqueio = '';
+        if (isRootAdmin) {
+            btnBloqueio = `
+                <button onclick="toggleBloqueio('${user.id}', ${user.is_bloqueado})" class="p-1.5 rounded-lg border ${user.is_bloqueado ? 'border-emerald-200 text-emerald-600 hover:bg-emerald-50' : 'border-amber-200 text-amber-600 hover:bg-amber-50'} transition-all" title="${user.is_bloqueado ? 'Desbloquear' : 'Bloquear'}">
+                    <i data-lucide="${user.is_bloqueado ? 'unlock' : 'lock'}" class="w-3.5 h-3.5"></i>
+                </button>
+            `;
+        }
 
-        const podeExcluir = payloadToken.perfil === 'admin' || (payloadToken.perfil === 'coordenador' && user.perfil === 'candidato');
-        const btnExcluir = podeExcluir
-            ? `<button class="btn btn-sm btn-danger ms-1" onclick="excluirUsuario('${user.id}', '${user.nome}')">🗑️</button>` : '';
+        const btnExcluir = `
+            <button onclick="excluirUsuario('${user.id}', '${user.nome}')" class="p-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-all" title="Excluir Conta">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+        `;
 
-        const row = `
-            <tr>
-                <td><div class="fw-bold">${user.nome}</div></td>
-                <td>
-                    <div class="small">${user.email}</div>
-                    <div class="text-muted small">${user.telefone}</div>
-                </td>
-                <td>${seletorPerfil}</td>
-                <td><span class="text-muted small">${user.cursos_ativos || '-'}</span></td>
-                <td class="text-center fw-bold text-primary">${user.total_agendados}</td>
-                <td class="text-center fw-bold text-success">${user.total_concluidos}</td>
-                <td class="text-center fw-bold text-danger">${user.total_cancelados}</td>
-                <td class="text-end text-nowrap">
-                    ${btnZap}
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50/50 transition-colors';
+        tr.innerHTML = `
+            <td class="px-6 py-4 font-bold text-slate-800">${user.nome}</td>
+            <td class="px-6 py-4 text-slate-500">${user.email}</td>
+            <td class="px-6 py-4">${linkZap}</td>
+            <td class="px-6 py-4">${seletorPerfil}</td>
+            <td class="px-6 py-4">${statusBadge}</td>
+            <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-1.5">
                     ${btnBloqueio}
                     ${btnExcluir}
-                </td>
-            </tr>
+                </div>
+            </td>
         `;
-        tbody.innerHTML += row;
-    });
-}
 
-// -----------------------------------------
-// LÓGICA DOS FILTROS (Pesquisa em Memória)
-// -----------------------------------------
-function aplicarFiltrosUsuarios(){
-    const termo = document.getElementById('filtroTextoUser').value.toLowerCase();
-    const perfil = document.getElementById('filtroPerfilUser').value;
-
-    const listaFiltrada = baseUtilizadores.filter(user => {
-        // Verifica se o texto digitado bate com o nome OU com o e-mail
-        const matchTexto = user.nome.toLowerCase().includes(termo) || user.email.toLowerCase().includes(termo);
-        // Verifica se o perfil escolhido bate (se estiver vazio, aceita todos)
-        const matchPerfil = perfil === "" || user.perfil === perfil;
-
-        return matchTexto && matchPerfil;
+        tbody.appendChild(tr);
     });
 
-    renderizarTabelaUtilizadores(listaFiltrada);
+    if (window.lucide) lucide.createIcons();
 }
 
-// Ouve as digitações e cliques para filtrar em tempo real!
-const inputBusca = document.getElementById('filtroTextoUser');
-const selectPerfil = document.getElementById('filtroPerfilUser');
-const btnLimpar = document.getElementById('btnLimparFiltros');
-
-if(inputBusca) inputBusca.addEventListener('input', aplicarFiltrosUsuarios);
-if(selectPerfil) selectPerfil.addEventListener('change', aplicarFiltrosUsuarios);
-if(btnLimpar) {
-    btnLimpar.addEventListener('click', () => {
-        inputBusca.value = '';
-        selectPerfil.value = '';
-        renderizarTabelaUtilizadores(baseUtilizadores);
-    });
-}
-
-// -----------------------------------------
-// FUNÇÃO DE ALTERAÇÃO DE PERFIL VIA API
-// -----------------------------------------
-async function alterarPerfil(idUsuario, novoPerfil){
-    if (!confirm(`Deseja alterar o perfil deste utilizador para ${novoPerfil.toUpperCase()}?`)) {
-        carregarUtilizadores(); // Se cancelar, volta o select ao normal
-        return;
-    }
-
+async function alterarPerfil(userId, novoPerfil) {
     try {
-        const response = await fetch(`${API_URL}/admin/usuarios/${idUsuario}/perfil`, {
+        const response = await fetch(`${API_URL}/admin/usuarios/${userId}/perfil`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify({ perfil: novoPerfil })
         });
 
+        const data = await response.json();
         if (response.ok) {
-            alert('Perfil atualizado com sucesso!');
-            carregarUtilizadores(); // Atualiza a base de dados
+            showToast('Cargo atualizado com sucesso!', 'success');
+            carregarUtilizadores();
         } else {
-            const data = await response.json();
-            alert(data.erro);
-            carregarUtilizadores(); // Reverte
+            showToast(data.erro || 'Erro ao alterar cargo.', 'error');
+            carregarUtilizadores();
         }
-    } catch (error) {
-        alert("Erro ao alterar o perfil.");
-        carregarUtilizadores(); // Reverte
+    } catch (e) {
+        showToast('Erro de conexão.', 'error');
     }
 }
 
-// Lógica de Bloqueio/Desbloqueio (Moderação)
-async function toggleBloqueio(id, statusAtual){
+async function toggleBloqueio(userId, statusAtual) {
     const acao = statusAtual ? 'desbloquear' : 'bloquear';
-    if (!confirm(`Tem a certeza que deseja ${acao} este utilizador?`)) return;
+    if (!confirm(`Tem certeza que deseja ${acao} este usuário?`)) return;
 
     try {
-        const response = await fetch(`${API_URL}/admin/usuarios/${id}/bloquear`, {
+        const response = await fetch(`${API_URL}/admin/usuarios/${userId}/bloquear`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -222,77 +272,154 @@ async function toggleBloqueio(id, statusAtual){
             body: JSON.stringify({ is_bloqueado: !statusAtual })
         });
 
+        const data = await response.json();
         if (response.ok) {
-            carregarUtilizadores(); // Recarrega a tabela de utilizadores
-            carregarMetricas();     // Atualiza o dashboard
+            showToast(`Usuário ${acao === 'bloquear' ? 'bloqueado' : 'desbloqueado'} com sucesso!`, 'success');
+            carregarUtilizadores();
         } else {
-            const err = await response.json();
-            alert(err.erro);
+            showToast(data.erro || 'Erro ao alterar status.', 'error');
         }
-    } catch (error) {
-        alert("Erro de ligação.");
+    } catch (e) {
+        showToast('Erro de conexão.', 'error');
     }
 }
 
-// ============================================================================
-// 3. CRIAR NOVO COLABORADOR (APENAS ADMIN)
-// ============================================================================
-const formColaborador = document.getElementById('formColaborador');
-if(formColaborador) {
-    formColaborador.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const msgDiv = document.getElementById('msgColab');
-        msgDiv.innerHTML = '<span class="text-primary">A registar colaborador...</span>';
+async function excluirUsuario(userId, nome) {
+    if (!confirm(`ATENÇÃO: Deseja realmente excluir permanentemente a conta de "${nome}"?`)) return;
 
-        const payload = {
-            nome: document.getElementById('colabNome').value,
-            email: document.getElementById('colabEmail').value,
-            telefone: document.getElementById('colabTelefone').value,
-            senha: document.getElementById('colabSenha').value,
-            perfil: document.getElementById('colabPerfil').value
-        };
+    try {
+        const response = await fetch(`${API_URL}/admin/usuarios/${userId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-        try {
-            const response = await fetch(`${API_URL}/admin/colaboradores`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                msgDiv.innerHTML = `<span class="text-success">${data.mensagem}</span>`;
-                formColaborador.reset();
-                carregarUtilizadores(); // Atualiza a lista caso a aba esteja aberta
-            } else {
-                msgDiv.innerHTML = `<span class="text-danger">${data.erro}</span>`;
-            }
-        } catch (error) {
-            msgDiv.innerHTML = '<span class="text-danger">Erro de ligação com o servidor.</span>';
+        const data = await response.json();
+        if (response.ok) {
+            showToast('Usuário excluído com sucesso.', 'success');
+            carregarUtilizadores();
+            carregarMetricas();
+        } else {
+            showToast(data.erro || 'Erro ao excluir usuário.', 'error');
         }
-    });
+    } catch (e) {
+        showToast('Erro de conexão.', 'error');
+    }
 }
 
-// ============================================================================
-// LÓGICA DE CADASTRO DE CURSO & VAGAS
-// ============================================================================
-const formCurso = document.getElementById('formCurso');
-formCurso.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const msgDiv = document.getElementById('msgCurso');
-    msgDiv.innerHTML = '<span class="text-primary">A guardar curso...</span>';
+// ==========================================
+// 3. GESTÃO DE CURSOS (CATÁLOGO ADMIN)
+// ==========================================
+async function carregarCursosAdmin() {
+    const tbody = document.getElementById('tabelaCursosBody');
+    tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-400">Carregando catálogo...</td></tr>';
 
-    const payload = {
-        nome: document.getElementById('nomeCurso').value,
-        descricao: document.getElementById('descricaoCurso').value,
-        motivo_modelo: document.getElementById('motivoCurso').value,
-        restricoes: document.getElementById('restricoesCurso').value,
-        profissional_id: document.getElementById('selectProfissional').value // VÍNCULO ADICIONADO!
-    };
+    try {
+        const response = await fetch(`${API_URL}/cursos/admin`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        baseCursosAdmin = await response.json();
+
+        tbody.innerHTML = '';
+
+        if (!baseCursosAdmin || baseCursosAdmin.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-400">Nenhum curso cadastrado ainda.</td></tr>';
+            return;
+        }
+
+        baseCursosAdmin.forEach(curso => {
+            const statusBadge = curso.status === 'ativo' 
+                ? '<span class="badge-status badge-concluido">Ativo na Vitrine</span>'
+                : '<span class="badge-status badge-cancelado">Arquivado</span>';
+
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50/50 transition-colors';
+            tr.innerHTML = `
+                <td class="px-6 py-4">
+                    <div class="font-bold text-slate-800 text-xs">${curso.nome}</div>
+                    <div class="text-[11px] text-slate-400 line-clamp-1">${curso.descricao || ''}</div>
+                </td>
+                <td class="px-6 py-4 text-slate-600">${curso.usuarios ? curso.usuarios.nome : 'Docente Senac'}</td>
+                <td class="px-6 py-4 text-slate-500">${curso.localizacao || 'Laboratório Senac'}</td>
+                <td class="px-6 py-4">${statusBadge}</td>
+                <td class="px-6 py-4 text-right">
+                    ${curso.status === 'ativo' ? `
+                        <button onclick="arquivarCurso('${curso.id}', '${curso.nome}')" class="px-2.5 py-1 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold transition-all">
+                            Arquivar
+                        </button>
+                    ` : '<span class="text-slate-400 text-xs">Sem ações</span>'}
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+        });
+
+        if (window.lucide) lucide.createIcons();
+
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-red-500 text-xs">Erro ao carregar cursos.</td></tr>';
+    }
+}
+
+async function arquivarCurso(cursoId, nome) {
+    if (!confirm(`Deseja arquivar e remover o curso "${nome}" da vitrine dos modelos?`)) return;
+
+    try {
+        const response = await fetch(`${API_URL}/cursos/${cursoId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            showToast('Curso arquivado com sucesso!', 'success');
+            carregarCursosAdmin();
+            carregarMetricas();
+        } else {
+            showToast('Erro ao arquivar curso.', 'error');
+        }
+    } catch (e) {
+        showToast('Erro de conexão.', 'error');
+    }
+}
+
+// Modal Novo Curso
+function abrirModalNovoCurso() {
+    carregarProfissionaisDropdown();
+    document.getElementById('modalNovoCurso').classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
+}
+
+function fecharModalNovoCurso() {
+    document.getElementById('modalNovoCurso').classList.add('hidden');
+}
+
+async function carregarProfissionaisDropdown() {
+    const select = document.getElementById('cursoProfissionalId');
+    try {
+        const response = await fetch(`${API_URL}/admin/profissionais`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const profs = await response.json();
+
+        select.innerHTML = '<option value="">Selecione o docente...</option>';
+        if (Array.isArray(profs)) {
+            profs.forEach(p => {
+                select.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
+            });
+        }
+    } catch (e) {
+        select.innerHTML = '<option value="">Erro ao carregar professores</option>';
+    }
+}
+
+async function criarCurso(e) {
+    e.preventDefault();
+
+    const nome = document.getElementById('cursoNome').value.trim();
+    const profissional_id = document.getElementById('cursoProfissionalId').value;
+    const localizacao = document.getElementById('cursoLocalizacao').value.trim();
+    const descricao = document.getElementById('cursoDescricao').value.trim();
+    const restricoes = document.getElementById('cursoRestricoes').value.trim();
+    const foto_url = document.getElementById('cursoFotoUrl').value.trim();
 
     try {
         const response = await fetch(`${API_URL}/cursos`, {
@@ -301,54 +428,53 @@ formCurso.addEventListener('submit', async (e) => {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({ nome, profissional_id, localizacao, descricao, restricoes, foto_url })
         });
 
         const data = await response.json();
 
         if (response.ok) {
-            msgDiv.innerHTML = `<span class="text-success">${data.mensagem}</span>`;
-            formCurso.reset();
-            carregarCursosNoSelect();
+            fecharModalNovoCurso();
+            showToast('Novo curso publicado com sucesso!', 'success');
+            carregarCursosAdmin();
+            carregarMetricas();
+            document.getElementById('formNovoCurso').reset();
         } else {
-            msgDiv.innerHTML = `<span class="text-danger">${data.erro}</span>`;
+            showToast(data.erro || 'Erro ao criar curso.', 'error');
         }
-    } catch (error) {
-        msgDiv.innerHTML = '<span class="text-danger">Erro de ligação.</span>';
+    } catch (e) {
+        showToast('Erro de conexão.', 'error');
     }
-});
+}
 
-async function carregarCursosNoSelect(){
-    const select = document.getElementById('selectCurso');
+// ==========================================
+// 4. GRADE DE HORÁRIOS & VAGAS
+// ==========================================
+async function carregarCursosDropdownGrade() {
+    const select = document.getElementById('gradeCursoId');
     try {
         const response = await fetch(`${API_URL}/cursos/ativos`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const cursos = await response.json();
 
-        select.innerHTML = '<option value="" disabled selected>Selecione o curso...</option>';
-        cursos.forEach(curso => {
-            const option = document.createElement('option');
-            option.value = curso.id;
-            option.textContent = curso.nome;
-            select.appendChild(option);
-        });
-    } catch (error) {
-        select.innerHTML = '<option value="" disabled>Erro ao carregar cursos</option>';
+        select.innerHTML = '<option value="">Selecione o curso...</option>';
+        if (Array.isArray(cursos)) {
+            cursos.forEach(c => {
+                select.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
+            });
+        }
+    } catch (e) {
+        select.innerHTML = '<option value="">Erro ao carregar cursos</option>';
     }
 }
 
-const formVagas = document.getElementById('formVagas');
-formVagas.addEventListener('submit', async (e) => {
+async function criarGradeHorario(e) {
     e.preventDefault();
-    const msgDiv = document.getElementById('msgVaga');
-    msgDiv.innerHTML = '<span class="text-primary">A abrir vagas...</span>';
 
-    const payload = {
-        curso_id: document.getElementById('selectCurso').value,
-        data_hora: document.getElementById('dataHora').value,
-        vagas_totais: parseInt(document.getElementById('vagasTotais').value)
-    };
+    const curso_id = document.getElementById('gradeCursoId').value;
+    const data_hora = document.getElementById('gradeDataHora').value;
+    const vagas_totais = parseInt(document.getElementById('gradeVagas').value, 10);
 
     try {
         const response = await fetch(`${API_URL}/disponibilidades`, {
@@ -357,227 +483,28 @@ formVagas.addEventListener('submit', async (e) => {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({ curso_id, data_hora: new Date(data_hora).toISOString(), vagas_totais })
         });
 
         const data = await response.json();
 
         if (response.ok) {
-            msgDiv.innerHTML = `<span class="text-success">${data.mensagem}</span>`;
-            formVagas.reset();
-            carregarMetricas();
+            showToast('Horário e vagas disponibilizados com sucesso!', 'success');
+            document.getElementById('formNovaGrade').reset();
         } else {
-            msgDiv.innerHTML = `<span class="text-danger">${data.erro}</span>`;
+            showToast(data.erro || 'Erro ao abrir horário.', 'error');
         }
-    } catch (error) {
-        msgDiv.innerHTML = '<span class="text-danger">Erro de ligação.</span>';
-    }
-});
-
-async function carregarProfissionaisNoSelect(){
-    const select = document.getElementById('selectProfissional');
-    try {
-        const response = await fetch(`${API_URL}/admin/profissionais`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const profissionais = await response.json();
-        select.innerHTML = '<option value="" disabled selected>Selecione o professor...</option>';
-        profissionais.forEach(p => {
-            const option = document.createElement('option');
-            option.value = p.id;
-            option.textContent = p.nome;
-            select.appendChild(option);
-        });
-    } catch (error) {
-        select.innerHTML = '<option value="" disabled>Erro ao carregar professores</option>';
-    }
-}
-
-async function excluirUsuario(id, nome){
-    if (!confirm(`ATENÇÃO: Tem certeza absoluta que deseja remover a conta de ${nome}? Todos os seus agendamentos serão excluídos.`)) return;
-
-    try {
-        const response = await fetch(`${API_URL}/admin/usuarios/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-            carregarUtilizadores(); // Atualiza a tabela
-            carregarMetricas();     // Atualiza o dashboard
-        } else {
-            const err = await response.json();
-            alert(err.erro);
-        }
-    } catch (error) {
-        alert("Erro na conexão com o servidor.");
-    }
-}
-
-// Instância do Modal de Edição (Adicione no topo junto às outras variáveis)
-let modalEditarCursoInstance = null;
-
-// Esperar o DOM carregar para instanciar o Modal
-document.addEventListener("DOMContentLoaded", () => {
-    const modalEl = document.getElementById('modalEditarCurso');
-    if (modalEl) modalEditarCursoInstance = new bootstrap.Modal(modalEl);
-
-    // Iniciar carregamentos
-    carregarCursosAdmin();
-});
-
-// ==========================================
-// 1. ATUALIZAR A CRIAÇÃO DE CURSOS
-// ==========================================
-// Procure o seu 'formCurso.addEventListener' e atualize o payload para incluir os novos campos:
-/*
-    const payload = {
-        // ... (mantenha os campos existentes)
-        foto_url: document.getElementById('fotoCurso').value,
-        localizacao: document.getElementById('localCurso').value,
-        profissional_id: document.getElementById('selectProfissional').value
-    };
-*/
-
-// ==========================================
-// 2. LISTAR CURSOS NA TABELA DE GESTÃO
-// ==========================================
-async function carregarCursosAdmin(){
-    const tbody = document.getElementById('tabelaCursosBody');
-    if (!tbody) return;
-
-    try {
-        const response = await fetch(`${API_URL}/cursos/admin`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const cursos = await response.json();
-
-        tbody.innerHTML = '';
-        if (cursos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nenhum curso cadastrado.</td></tr>';
-            return;
-        }
-
-        cursos.forEach(curso => {
-            const profNome = curso.usuarios ? curso.usuarios.nome : 'Sem Professor';
-            const statusBadge = curso.status === 'ativo'
-                ? '<span class="badge bg-success">Ativo</span>'
-                : '<span class="badge bg-secondary">Arquivado</span>';
-
-            // O arquivamento é um Soft Delete. Só mostramos o botão se estiver ativo.
-            const btnArquivar = curso.status === 'ativo'
-                ? `<button class="btn btn-sm btn-outline-danger ms-1" onclick="arquivarCurso('${curso.id}', '${curso.nome}')">Arquivar</button>`
-                : '';
-
-            const row = `
-                <tr>
-                    <td>
-                        <div class="fw-bold text-dark">${curso.nome}</div>
-                        <div class="small text-muted text-truncate" style="max-width: 200px;">${curso.descricao}</div>
-                    </td>
-                    <td>${profNome}</td>
-                    <td class="small">${curso.localizacao || '-'}</td>
-                    <td>${statusBadge}</td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary" onclick='abrirModalEdicao(${JSON.stringify(curso).replace(/'/g, "&#39;")})'>Editar</button>
-                        ${btnArquivar}
-                    </td>
-                </tr>
-            `;
-            tbody.innerHTML += row;
-        });
-    } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">Erro ao carregar catálogo.</td></tr>';
+    } catch (e) {
+        showToast('Erro de conexão.', 'error');
     }
 }
 
 // ==========================================
-// 3. EDITAR E ARQUIVAR CURSOS
+// 5. PAUTAS GLOBAIS
 // ==========================================
-async function arquivarCurso(id, nome){
-    if(!confirm(`Deseja arquivar o curso "${nome}"? Ele sairá da vitrine dos alunos, mas o histórico será mantido.`)) return;
-
-    try {
-        const response = await fetch(`${API_URL}/cursos/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-            carregarCursosAdmin(); // Atualiza a tabela
-            carregarCursosNoSelect(); // Atualiza os selects de formulários
-        } else {
-            alert('Erro ao arquivar curso.');
-        }
-    } catch (error) {
-        alert('Erro de conexão.');
-    }
-}
-
-function abrirModalEdicao(curso){
-    document.getElementById('editCursoId').value = curso.id;
-    document.getElementById('editNome').value = curso.nome;
-    document.getElementById('editDescricao').value = curso.descricao;
-    document.getElementById('editLocal').value = curso.localizacao;
-    document.getElementById('editFoto').value = curso.foto_url || '';
-
-    // Copiar opções do select de profissionais principal para o select do modal
-    const selectPrincipal = document.getElementById('selectProfissional');
-    const selectEdit = document.getElementById('editProfissional');
-    selectEdit.innerHTML = selectPrincipal.innerHTML;
-    selectEdit.value = curso.profissional_id;
-
-    document.getElementById('msgEditCurso').innerHTML = '';
-    modalEditarCursoInstance.show();
-}
-
-const formEditarCurso = document.getElementById('formEditarCurso');
-if (formEditarCurso) {
-    formEditarCurso.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id = document.getElementById('editCursoId').value;
-        const msgDiv = document.getElementById('msgEditCurso');
-        msgDiv.innerHTML = '<span class="text-primary">A atualizar...</span>';
-
-        const payload = {
-            nome: document.getElementById('editNome').value,
-            descricao: document.getElementById('editDescricao').value,
-            localizacao: document.getElementById('editLocal').value,
-            foto_url: document.getElementById('editFoto').value,
-            profissional_id: document.getElementById('editProfissional').value
-        };
-
-        try {
-            const response = await fetch(`${API_URL}/cursos/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (response.ok) {
-                msgDiv.innerHTML = '<span class="text-success">Atualizado com sucesso!</span>';
-                carregarCursosAdmin();
-                carregarCursosNoSelect();
-                setTimeout(() => modalEditarCursoInstance.hide(), 1500);
-            } else {
-                msgDiv.innerHTML = '<span class="text-danger">Erro ao atualizar.</span>';
-            }
-        } catch (error) {
-            msgDiv.innerHTML = '<span class="text-danger">Erro de conexão.</span>';
-        }
-    });
-}
-
-// ==========================================
-// MÓDULO DE PAUTAS GLOBAIS (VISÃO COORDENAÇÃO)
-// ==========================================
-async function carregarPautasGlobais(){
-    const accordion = document.getElementById('accordionPautasGlobais');
-    // Se o elemento não existir na tela (por segurança), interrompe a função
-    if (!accordion) return;
+async function carregarPautasGlobais() {
+    const container = document.getElementById('listaPautasGlobais');
+    container.innerHTML = '<div class="text-center py-8 text-slate-400 text-xs">Carregando pautas globais...</div>';
 
     try {
         const response = await fetch(`${API_URL}/admin/pautas`, {
@@ -585,84 +512,113 @@ async function carregarPautasGlobais(){
         });
         const cursos = await response.json();
 
-        accordion.innerHTML = '';
+        container.innerHTML = '';
 
-        if (cursos.length === 0) {
-            accordion.innerHTML = '<div class="alert alert-info border-0 shadow-sm mt-3">Nenhuma pauta ativa no momento.</div>';
+        if (!Array.isArray(cursos) || cursos.length === 0) {
+            container.innerHTML = '<div class="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-400 text-center">Nenhum atendimento registrado no momento.</div>';
             return;
         }
 
-        cursos.forEach((curso, index) => {
-            let horariosHTML = '';
+        cursos.forEach(curso => {
+            let aulasHTML = '';
 
-            // Pega o nome do professor ou avisa se não tiver
-            const nomeProfessor = curso.usuarios ? curso.usuarios.nome : 'Sem Professor Vinculado';
-
-            if (curso.disponibilidades && curso.disponibilidades.length > 0) {
-                // Ordenar por data
-                curso.disponibilidades.sort((a, b) => new Date(a.data_hora) - new Date(b.data_hora));
-
+            if (Array.isArray(curso.disponibilidades)) {
                 curso.disponibilidades.forEach(disp => {
-                    const dataFormatada = new Date(disp.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-                    const agendamentosAtivos = disp.agendamentos ? disp.agendamentos.filter(a => a.status !== 'cancelado') : [];
+                    const dataObj = new Date(disp.data_hora);
+                    const dataF = dataObj.toLocaleDateString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+                    const agendados = Array.isArray(disp.agendamentos) ? disp.agendamentos.filter(a => a.status !== 'cancelado') : [];
 
-                    let tabelaModelos = '';
-                    if (agendamentosAtivos.length === 0) {
-                        tabelaModelos = `<p class="text-muted small mb-0 mt-2">Nenhum modelo agendado.</p>`;
-                    } else {
-                        let linhas = agendamentosAtivos.map(ag => `
-                            <tr>
-                                <td>${ag.usuarios.nome}</td>
-                                <td><a href="https://wa.me/55${ag.usuarios.telefone.replace(/\D/g, '')}" target="_blank" class="text-decoration-none text-success">📱 ${ag.usuarios.telefone}</a></td>
-                                <td><span class="badge ${ag.status === 'concluido' ? 'bg-success' : 'bg-primary'}">${ag.status.toUpperCase()}</span></td>
-                            </tr>
-                        `).join('');
+                    const inscritosHTML = agendados.map(a => `
+                        <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                            <span class="font-bold text-slate-800">${a.usuarios ? a.usuarios.nome : 'Modelo'}</span>
+                            <span class="text-slate-500 font-medium">${a.usuarios ? a.usuarios.telefone : ''}</span>
+                            <span class="badge-status ${a.status === 'concluido' ? 'badge-concluido' : 'badge-agendado'}">${a.status}</span>
+                        </div>
+                    `).join('');
 
-                        tabelaModelos = `
-                            <table class="table table-sm mt-3 border">
-                                <thead class="table-light"><tr><th>Modelo</th><th>Contato</th><th>Status</th></tr></thead>
-                                <tbody>${linhas}</tbody>
-                            </table>`;
-                    }
-
-                    horariosHTML += `
-                        <div class="mb-4 p-3 bg-white border rounded shadow-sm">
-                            <div class="fw-bold text-dark border-bottom pb-2">📅 Data: ${dataFormatada} <span class="badge bg-secondary float-end">Ocupação: ${disp.vagas_ocupadas} / ${disp.vagas_totais}</span></div>
-                            ${tabelaModelos}
+                    aulasHTML += `
+                        <div class="p-4 bg-white rounded-2xl border border-slate-200 space-y-2">
+                            <div class="flex items-center justify-between text-xs border-b border-slate-100 pb-2">
+                                <span class="font-bold text-slate-900">📅 Aula: ${dataF}</span>
+                                <span class="text-slate-500 font-semibold">Ocupação: ${disp.vagas_ocupadas} / ${disp.vagas_totais}</span>
+                            </div>
+                            <div class="space-y-1.5 pt-1">
+                                ${inscritosHTML || '<div class="text-slate-400 text-xs">Sem inscritos</div>'}
+                            </div>
                         </div>
                     `;
                 });
             }
 
-            const itemOpen = index === 0 ? 'show' : '';
-            const btnCollapsed = index === 0 ? '' : 'collapsed';
-
-            // Monta o cabeçalho da "Sanfona" com o nome do curso e o professor
-            accordion.innerHTML += `
-                <div class="accordion-item border-0 border-bottom">
-                    <h2 class="accordion-header">
-                        <button class="accordion-button ${btnCollapsed}" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePauta${curso.id}">
-                            <strong class="me-2 text-primary">📘 ${curso.nome}</strong>
-                            <span class="badge bg-info text-dark">Prof: ${nomeProfessor}</span>
-                        </button>
-                    </h2>
-                    <div id="collapsePauta${curso.id}" class="accordion-collapse collapse ${itemOpen}" data-bs-parent="#accordionPautasGlobais">
-                        <div class="accordion-body bg-light">
-                            ${horariosHTML || '<p class="text-muted mt-2">Sem horários abertos para este curso.</p>'}
-                        </div>
-                    </div>
+            const card = document.createElement('div');
+            card.className = 'p-5 bg-slate-50 rounded-3xl border border-slate-200 space-y-3';
+            card.innerHTML = `
+                <div class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                    <i data-lucide="book-open" class="w-4 h-4 text-senac-blue"></i>
+                    <span>${curso.nome}</span>
+                </div>
+                <div class="space-y-2">
+                    ${aulasHTML || '<div class="text-slate-400 text-xs">Sem horários</div>'}
                 </div>
             `;
+
+            container.appendChild(card);
         });
-    } catch (error) {
-        console.error("Erro ao carregar as pautas globais:", error);
-        accordion.innerHTML = '<div class="text-danger p-4 text-center">Erro ao carregar os dados. Verifique a conexão com o servidor.</div>';
+
+        if (window.lucide) lucide.createIcons();
+
+    } catch (e) {
+        container.innerHTML = '<div class="p-4 text-red-500 text-xs">Erro ao carregar pautas.</div>';
     }
 }
 
-carregarPautasGlobais();
-carregarProfissionaisNoSelect();
-// Inicialização de ecrã
+// ==========================================
+// 6. CADASTRO DE COLABORADOR
+// ==========================================
+function abrirModalColaborador() {
+    document.getElementById('modalNovoColaborador').classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
+}
+
+function fecharModalColaborador() {
+    document.getElementById('modalNovoColaborador').classList.add('hidden');
+}
+
+async function criarColaborador(e) {
+    e.preventDefault();
+
+    const nome = document.getElementById('colabNome').value.trim();
+    const email = document.getElementById('colabEmail').value.trim();
+    const telefone = document.getElementById('colabTelefone').value.trim();
+    const perfil = document.getElementById('colabPerfil').value;
+    const senha = document.getElementById('colabSenha').value;
+
+    try {
+        const response = await fetch(`${API_URL}/admin/colaboradores`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ nome, email, telefone, perfil, senha })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            fecharModalColaborador();
+            showToast(`Colaborador (${perfil}) criado com sucesso!`, 'success');
+            carregarUtilizadores();
+            carregarMetricas();
+            document.getElementById('formNovoColab').reset();
+        } else {
+            showToast(data.erro || 'Erro ao criar colaborador.', 'error');
+        }
+    } catch (e) {
+        showToast('Erro de conexão.', 'error');
+    }
+}
+
+// Inicialização
 carregarMetricas();
-carregarCursosNoSelect();
 carregarUtilizadores();

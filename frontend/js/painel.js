@@ -1,4 +1,4 @@
-// frontend/js/painel.js
+// frontend/js/painel.js - Portal do Candidato / Modelo
 
 const FALLBACK_BASE_URL = 'http://localhost:3000/api';
 const API_URL = window.location.protocol === 'file:' ? FALLBACK_BASE_URL : `${window.location.origin}/api`;
@@ -8,10 +8,10 @@ if (!token) {
     window.location.href = 'index.html';
 }
 
+let payloadToken = null;
 try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    // Se o token estiver expirado (exp em segundos)
-    if (payload.exp && payload.exp * 1000 < Date.now()) {
+    payloadToken = JSON.parse(atob(token.split('.')[1]));
+    if (payloadToken.exp && payloadToken.exp * 1000 < Date.now()) {
         localStorage.removeItem('token');
         window.location.href = 'index.html';
     }
@@ -20,264 +20,503 @@ try {
     window.location.href = 'index.html';
 }
 
+if (payloadToken) {
+    const nomeEl = document.getElementById('nav-user-name');
+    if (nomeEl) nomeEl.textContent = payloadToken.email.split('@')[0];
+}
+
 document.getElementById('btnSair').addEventListener('click', () => {
     localStorage.removeItem('token');
     window.location.href = 'index.html';
 });
 
-// Instância do Modal do Bootstrap para controlo via JS
-const modalAgendamento = new bootstrap.Modal(document.getElementById('modalAgendamento'));
-const modalFeedback = new bootstrap.Modal(document.getElementById('modalFeedback'));
-const modalDetalhesCurso = new bootstrap.Modal(document.getElementById('modalDetalhesCurso'));
+// Toast Helper
+function showToast(message, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'toast animate-fade-in bg-white border border-slate-200 shadow-xl';
+    
+    let icon = 'info';
+    let iconClass = 'text-blue-600 bg-blue-50';
+    if (type === 'success') { icon = 'check-circle'; iconClass = 'text-emerald-600 bg-emerald-50'; }
+    if (type === 'error') { icon = 'alert-circle'; iconClass = 'text-red-600 bg-red-50'; }
+
+    toast.innerHTML = `
+        <div class="w-8 h-8 rounded-lg ${iconClass} flex items-center justify-center flex-shrink-0">
+            <i data-lucide="${icon}" class="w-4 h-4"></i>
+        </div>
+        <div class="flex-grow text-xs font-semibold text-slate-800 pt-1.5">${message}</div>
+    `;
+
+    container.appendChild(toast);
+    if (window.lucide) lucide.createIcons();
+
+    setTimeout(() => {
+        toast.style.animation = 'slideOutRight 0.3s forwards';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// Global State
+let todosCursos = [];
+let cursoSelecionadoAtual = null;
+let horarioSelecionadoId = null;
+let notaFeedbackAtual = 5;
+let categoriaFiltroAtual = 'todas';
 
 // ==========================================
-// 1. CARREGAR A VITRINE DE CURSOS
+// NAVEGAÇÃO ENTRE ABAS DO CANDIDATO
 // ==========================================
-async function carregarCursos(){
+function setTab(tabName) {
+    const tabs = ['vitrine', 'meus-agendamentos', 'como-funciona'];
+    tabs.forEach(t => {
+        const btn = document.getElementById(`tab-btn-${t}`);
+        const view = document.getElementById(`subview-${t}`);
+        if (t === tabName) {
+            if (btn) {
+                btn.className = 'px-4 py-2 rounded-xl text-sm font-bold transition-all bg-senac-blue text-white shadow-sm flex items-center gap-2';
+            }
+            if (view) view.classList.remove('hidden');
+        } else {
+            if (btn) {
+                btn.className = 'px-4 py-2 rounded-xl text-sm font-semibold transition-all text-slate-600 hover:bg-slate-100 flex items-center gap-2';
+            }
+            if (view) view.classList.add('hidden');
+        }
+    });
+
+    if (tabName === 'meus-agendamentos') {
+        carregarMeusAgendamentos();
+    }
+    if (window.lucide) lucide.createIcons();
+}
+
+// ==========================================
+// 1. CARREGAR VITRINE DE CURSOS
+// ==========================================
+async function carregarCursos() {
     const divCursos = document.getElementById('listaCursos');
     try {
         const response = await fetch(`${API_URL}/cursos/ativos`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        const cursos = await response.json();
-
-        divCursos.innerHTML = '';
-        if (cursos.length === 0) {
-            divCursos.innerHTML = '<p class="text-muted">Nenhum serviço disponível de momento.</p>';
-            return;
-        }
-
-        cursos.forEach(curso => {
-            const profNome = curso.usuarios ? curso.usuarios.nome : 'A definir';
-            const local = curso.localizacao || 'SENAC';
-            const imagem = curso.foto_url || 'https://via.placeholder.com/600x400/004a8d/ffffff?text=Connect+Senac';
-
-            // O Card agora é clicável por inteiro e tem a imagem no topo
-            const card = `
-                <div class="col-md-6 col-lg-4">
-                    <div class="card shadow-sm h-100 card-curso overflow-hidden" style="cursor: pointer;" onclick='abrirModalDetalhesCurso(${JSON.stringify(curso).replace(/'/g, "&#39;")})'>
-                        <img src="${imagem}" class="card-img-top" style="height: 180px; object-fit: cover;" alt="${curso.nome}">
-                        <div class="card-body d-flex flex-column">
-                            <h5 class="card-title fw-bold text-dark mb-1">${curso.nome}</h5>
-                            <div class="text-muted small mb-2">📍 ${local}</div>
-                            <p class="card-text small text-secondary flex-grow-1">${curso.descricao.substring(0, 80)}...</p>
-                            <button class="btn btn-outline-primary btn-sm w-100 fw-bold mt-auto">Saber mais</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            divCursos.innerHTML += card;
-        });
+        todosCursos = await response.json();
+        renderizarCursos(todosCursos);
     } catch (error) {
-        divCursos.innerHTML = '<p class="text-danger">Erro ao carregar os cursos.</p>';
+        divCursos.innerHTML = '<div class="col-span-full text-center py-12 text-red-500 font-semibold">Erro ao carregar os cursos. Tente recarregar a página.</div>';
     }
 }
 
+function filtrarCategoria(cat) {
+    categoriaFiltroAtual = cat;
+    document.querySelectorAll('.filter-cat-btn').forEach(b => {
+        if (b.dataset.cat === cat) {
+            b.className = 'filter-cat-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900 text-white transition-all whitespace-nowrap';
+        } else {
+            b.className = 'filter-cat-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap';
+        }
+    });
+    filtrarCursos();
+}
+
+function filtrarCursos() {
+    const busca = (document.getElementById('filter-search-input').value || '').toLowerCase();
+    
+    const filtrados = todosCursos.filter(curso => {
+        const matchBusca = (curso.nome || '').toLowerCase().includes(busca) ||
+                           (curso.descricao || '').toLowerCase().includes(busca) ||
+                           (curso.usuarios ? curso.usuarios.nome.toLowerCase().includes(busca) : false);
+        
+        const matchCat = categoriaFiltroAtual === 'todas' || 
+                         (curso.nome && curso.nome.toLowerCase().includes(categoriaFiltroAtual.toLowerCase())) ||
+                         (curso.descricao && curso.descricao.toLowerCase().includes(categoriaFiltroAtual.toLowerCase()));
+        
+        return matchBusca && matchCat;
+    });
+
+    renderizarCursos(filtrados);
+}
+
+function renderizarCursos(lista) {
+    const divCursos = document.getElementById('listaCursos');
+    divCursos.innerHTML = '';
+
+    if (!lista || lista.length === 0) {
+        divCursos.innerHTML = `
+            <div class="col-span-full text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 space-y-3">
+                <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                    <i data-lucide="search-x" class="w-7 h-7"></i>
+                </div>
+                <h3 class="text-base font-bold text-slate-800">Nenhum procedimento encontrado</h3>
+                <p class="text-xs text-slate-500">Tente buscar por outros termos ou limpar os filtros de categoria.</p>
+            </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    lista.forEach(curso => {
+        const profNome = curso.usuarios ? curso.usuarios.nome : 'Docente Especialista';
+        const local = curso.localizacao || 'Laboratório de Práticas';
+        const imagem = curso.foto_url || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&auto=format&fit=crop&q=80';
+
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm card-hover-effect flex flex-col cursor-pointer';
+        card.onclick = () => abrirModalDetalhes(curso);
+
+        card.innerHTML = `
+            <div class="relative h-48 w-full overflow-hidden bg-slate-100">
+                <img src="${imagem}" alt="${curso.nome}" class="w-full h-full object-cover">
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
+                <span class="absolute top-3 right-3 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500 text-white shadow-sm">
+                    100% Gratuito
+                </span>
+                <span class="absolute bottom-3 left-3 text-xs font-bold text-white flex items-center gap-1">
+                    <i data-lucide="map-pin" class="w-3.5 h-3.5 text-senac-orange"></i> ${local}
+                </span>
+            </div>
+            
+            <div class="p-5 flex flex-col flex-grow justify-between space-y-4">
+                <div>
+                    <h3 class="font-extrabold text-base text-slate-900 line-clamp-1">${curso.nome}</h3>
+                    <p class="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">${curso.descricao || 'Atendimento prático supervisionado por alunos do Senac.'}</p>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <div class="text-[11px] text-slate-500 font-medium">
+                        👨‍🏫 Prof. <strong class="text-slate-700">${profNome}</strong>
+                    </div>
+                    <button class="px-3 py-1.5 rounded-xl bg-senac-blue-light text-senac-blue hover:bg-senac-blue hover:text-white font-bold text-xs transition-all flex items-center gap-1">
+                        <span>Ver Vagas</span>
+                        <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        divCursos.appendChild(card);
+    });
+
+    if (window.lucide) lucide.createIcons();
+}
+
 // ==========================================
-// 1.5 MODAL DE DETALHES DO CURSO
+// 2. MODAL DE DETALHES & HORÁRIOS
 // ==========================================
-function abrirModalDetalhesCurso(curso){
-    // 1. Preencher os dados visuais
+async function abrirModalDetalhes(curso) {
+    cursoSelecionadoAtual = curso;
+    horarioSelecionadoId = null;
+
     document.getElementById('detalheCursoNome').textContent = curso.nome;
-    document.getElementById('detalheCursoProf').textContent = curso.usuarios ? curso.usuarios.nome : 'A definir';
-    document.getElementById('detalheCursoLocal').textContent = curso.localizacao || 'SENAC';
-    document.getElementById('detalheCursoDescricao').textContent = curso.descricao;
+    document.getElementById('detalheCursoProf').textContent = curso.usuarios ? curso.usuarios.nome : 'Docente Senac';
+    document.getElementById('detalheCursoLocal').textContent = 'SENAC';
+    document.getElementById('detalheCursoSala').textContent = curso.localizacao || 'Laboratório Senac';
+    document.getElementById('detalheCursoDescricao').textContent = curso.descricao || 'Sem descrição cadastrada.';
+    document.getElementById('detalheCursoImagem').src = curso.foto_url || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&auto=format&fit=crop&q=80';
 
-    // Configurar a Imagem
-    document.getElementById('detalheCursoImagem').src = curso.foto_url || 'https://via.placeholder.com/800x400/004a8d/ffffff?text=Connect+Senac';
-
-    // Configurar o bloco de Restrições (Esconde se não houver)
     const blocoRestricoes = document.getElementById('blocoRestricoes');
     if (curso.restricoes && curso.restricoes.trim() !== '') {
-        blocoRestricoes.style.display = 'block';
+        blocoRestricoes.classList.remove('hidden');
         document.getElementById('detalheCursoRestricoes').textContent = curso.restricoes;
     } else {
-        blocoRestricoes.style.display = 'none';
+        blocoRestricoes.classList.add('hidden');
     }
 
-    // 2. Programar o botão para abrir o Agendamento
-    const btnHorarios = document.getElementById('btnIrParaHorarios');
-    btnHorarios.onclick = () => {
-        modalDetalhesCurso.hide();
-        // Atraso de 400ms para a animação do Bootstrap não "encavalar" os dois modais
-        setTimeout(() => {
-            abrirModalAgendamento(curso.id, curso.nome, curso.descricao);
-        }, 400);
-    };
+    // Carregar Horários Disponíveis
+    carregarDisponibilidades(curso.id);
 
-    // [NOVO] Buscar as avaliações deste curso
-    const divAvaliacoes = document.getElementById('detalheCursoAvaliacoes');
-    divAvaliacoes.innerHTML = '<div class="text-center text-muted small">A carregar...</div>';
+    // Carregar Avaliações
+    carregarAvaliacoesCurso(curso.id);
 
-    fetch(`${API_URL}/feedbacks/curso/${curso.id}`, { headers: { 'Authorization': `Bearer ${token}` } })
-        .then(res => res.json())
-        .then(feedbacks => {
-            if (feedbacks.length === 0) {
-                divAvaliacoes.innerHTML = '<div class="text-muted small text-center py-3">Este curso ainda não tem avaliações. Seja o primeiro a avaliar!</div>';
-                return;
-            }
-
-            // Calcula a Média
-            const media = (feedbacks.reduce((acc, curr) => acc + curr.nota, 0) / feedbacks.length).toFixed(1);
-
-            let html = `<div class="mb-3"><span class="badge bg-warning text-dark fs-6">Nota Média: ${media} / 5.0</span> <span class="small text-muted ms-2">(${feedbacks.length} avaliações)</span></div>`;
-
-            feedbacks.forEach(f => {
-                const estrelas = '⭐'.repeat(f.nota);
-                const dataFormatada = new Date(f.created_at).toLocaleDateString('pt-BR');
-                const comentarioTexto = f.comentario ? `"${f.comentario}"` : '<span class="text-muted fst-italic">Sem comentário escrito.</span>';
-
-                html += `
-                    <div class="bg-light p-3 rounded mb-2 border-start border-warning border-4">
-                        <div class="d-flex justify-content-between mb-1">
-                            <strong class="small text-dark">${f.avaliador_nome}</strong>
-                            <span class="small text-muted">${dataFormatada}</span>
-                        </div>
-                        <div class="mb-1">${estrelas}</div>
-                        <div class="small text-secondary">${comentarioTexto}</div>
-                    </div>
-                `;
-            });
-            divAvaliacoes.innerHTML = html;
-        });
-
-    // 3. Mostrar o modal
-    modalDetalhesCurso.show();
+    document.getElementById('modalDetalhesCurso').classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
 }
 
-// ==========================================
-// 2. FLUXO DE AGENDAMENTO (MODAL E HORÁRIOS)
-// ==========================================
-async function abrirModalAgendamento(cursoId, cursoNome, cursoDescricao){
-    document.getElementById('modalCursoNome').textContent = cursoNome;
-    document.getElementById('modalCursoDescricao').textContent = cursoDescricao;
-    document.getElementById('msgAgendamento').innerHTML = '';
+function fecharModalDetalhes() {
+    document.getElementById('modalDetalhesCurso').classList.add('hidden');
+}
 
-    const select = document.getElementById('selectHorarios');
-    select.innerHTML = '<option value="" disabled selected>A procurar horários...</option>';
-
-    // Configura o botão de confirmar para saber qual curso estamos a tratar
-    const btnConfirmar = document.getElementById('btnConfirmarAgendamento');
-    btnConfirmar.onclick = () => realizarAgendamento(select.value);
-
-    modalAgendamento.show();
+async function carregarDisponibilidades(cursoId) {
+    const listEl = document.getElementById('listaHorariosDisponiveis');
+    listEl.innerHTML = '<div class="text-xs text-slate-400 py-3">Carregando horários com vagas livres...</div>';
 
     try {
         const response = await fetch(`${API_URL}/disponibilidades/curso/${cursoId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        const horarios = await response.json();
+        const disponibilidades = await response.json();
 
-        select.innerHTML = '<option value="" disabled selected>Escolha um horário...</option>';
+        listEl.innerHTML = '';
 
-        if (horarios.length === 0) {
-            select.innerHTML = '<option value="" disabled selected>Sem vagas de momento.</option>';
-            btnConfirmar.disabled = true;
+        if (!disponibilidades || disponibilidades.length === 0) {
+            listEl.innerHTML = '<div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500 font-medium">Nenhum horário aberto com vagas para este curso no momento.</div>';
             return;
         }
 
-        btnConfirmar.disabled = false;
-        horarios.forEach(h => {
-            const dataFormatada = new Date(h.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-            const vagasLivres = h.vagas_totais - h.vagas_ocupadas;
-            select.innerHTML += `<option value="${h.id}">${dataFormatada} (${vagasLivres} vagas)</option>`;
+        disponibilidades.forEach((disp, idx) => {
+            const dataObj = new Date(disp.data_hora);
+            const dataFormatada = dataObj.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+            const horaFormatada = dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const vagasLivres = disp.vagas_totais - disp.vagas_ocupadas;
+
+            const radioWrapper = document.createElement('label');
+            radioWrapper.className = `flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer ${idx === 0 ? 'border-senac-blue bg-blue-50/40 ring-1 ring-senac-blue' : 'border-slate-200 hover:border-slate-300'}`;
+            
+            if (idx === 0) horarioSelecionadoId = disp.id;
+
+            radioWrapper.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <input type="radio" name="horario_opcao" value="${disp.id}" ${idx === 0 ? 'checked' : ''} onchange="selecionarHorario('${disp.id}', this)" class="text-senac-blue focus:ring-senac-blue">
+                    <div>
+                        <span class="text-xs font-bold text-slate-800 uppercase tracking-wide block">${dataFormatada} às ${horaFormatada}</span>
+                        <span class="text-[11px] text-slate-500 font-medium">Atendimento presencial</span>
+                    </div>
+                </div>
+                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${vagasLivres <= 2 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+                    ${vagasLivres} vaga${vagasLivres > 1 ? 's' : ''}
+                </span>
+            `;
+
+            listEl.appendChild(radioWrapper);
         });
-    } catch (error) {
-        select.innerHTML = '<option value="" disabled selected>Erro ao carregar horários.</option>';
+
+    } catch (e) {
+        listEl.innerHTML = '<div class="text-xs text-red-500 py-2">Erro ao carregar horários.</div>';
     }
 }
 
-async function realizarAgendamento(disponibilidadeId){
-    const msgDiv = document.getElementById('msgAgendamento');
-    if (!disponibilidadeId) {
-        msgDiv.innerHTML = '<span class="text-danger">Por favor, selecione um horário.</span>';
+function selecionarHorario(dispId, radioInput) {
+    horarioSelecionadoId = dispId;
+    document.querySelectorAll('#listaHorariosDisponiveis label').forEach(l => {
+        l.className = 'flex items-center justify-between p-3 rounded-2xl border border-slate-200 hover:border-slate-300 transition-all cursor-pointer';
+    });
+    radioInput.closest('label').className = 'flex items-center justify-between p-3 rounded-2xl border border-senac-blue bg-blue-50/40 ring-1 ring-senac-blue transition-all cursor-pointer';
+}
+
+async function carregarAvaliacoesCurso(cursoId) {
+    const listEl = document.getElementById('detalheCursoAvaliacoes');
+    listEl.innerHTML = '<div class="text-xs text-slate-400 py-2">Carregando avaliações...</div>';
+
+    try {
+        const response = await fetch(`${API_URL}/feedbacks/curso/${cursoId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const feedbacks = await response.json();
+
+        listEl.innerHTML = '';
+
+        if (!feedbacks || feedbacks.length === 0) {
+            listEl.innerHTML = '<div class="text-xs text-slate-400">Ainda não há avaliações para este curso. Seja o primeiro a participar e avaliar!</div>';
+            return;
+        }
+
+        feedbacks.forEach(f => {
+            const estrelas = '★'.repeat(f.nota) + '☆'.repeat(5 - f.nota);
+            const dataF = new Date(f.created_at).toLocaleDateString('pt-BR');
+            const item = document.createElement('div');
+            item.className = 'p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs space-y-1';
+            item.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-slate-700">${f.nome_avaliador || 'Modelo Voluntário'}</span>
+                    <span class="text-amber-500 font-bold">${estrelas}</span>
+                </div>
+                <p class="text-slate-600 text-[11px] leading-relaxed">${f.comentario || 'Sem comentário adicional.'}</p>
+                <div class="text-[10px] text-slate-400 text-right">${dataF}</div>
+            `;
+            listEl.appendChild(item);
+        });
+
+    } catch (e) {
+        listEl.innerHTML = '<div class="text-xs text-slate-400">Não foi possível carregar as avaliações.</div>';
+    }
+}
+
+// ==========================================
+// 3. CONFIRMAR AGENDAMENTO (COM CONFETTI)
+// ==========================================
+async function confirmarAgendamento() {
+    if (!horarioSelecionadoId) {
+        showToast('Por favor, selecione um horário disponível.', 'error');
         return;
     }
 
-    msgDiv.innerHTML = '<span class="text-primary">A confirmar...</span>';
+    const checkTermos = document.getElementById('check-lgpd-termos');
+    if (!checkTermos || !checkTermos.checked) {
+        showToast('Você deve aceitar os termos do programa voluntário.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('btnConfirmarAgendamento');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="animate-spin mr-2">⏳</span> Confirmando agendamento...`;
+
     try {
         const response = await fetch(`${API_URL}/agendamentos`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ disponibilidade_id: disponibilidadeId })
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ disponibilidade_id: horarioSelecionadoId })
         });
 
         const data = await response.json();
 
         if (response.ok) {
-            msgDiv.innerHTML = `<span class="text-success">Agendamento concluído!</span>`;
-            carregarMeusAgendamentos(); // Atualiza a lista automaticamente
-            setTimeout(() => modalAgendamento.hide(), 1500);
+            fecharModalDetalhes();
+            
+            // Efeito Confetti
+            if (window.confetti) {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+
+            showToast('Agendamento realizado com sucesso! 🎉', 'success');
+            
+            // Redireciona suavemente para Meus Agendamentos
+            setTimeout(() => {
+                setTab('meus-agendamentos');
+            }, 800);
         } else {
-            msgDiv.innerHTML = `<span class="text-danger">${data.erro}</span>`;
+            showToast(data.erro || 'Falha ao agendar horário.', 'error');
         }
-    } catch (error) {
-        msgDiv.innerHTML = '<span class="text-danger">Erro de conexão.</span>';
+    } catch (e) {
+        showToast('Erro de conexão ao realizar agendamento.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> Confirmar Meu Agendamento`;
+        if (window.lucide) lucide.createIcons();
     }
 }
 
 // ==========================================
-// 3. CARREGAR E CANCELAR OS MEUS AGENDAMENTOS
+// 4. MEUS AGENDAMENTOS & CANCELAMENTO
 // ==========================================
-async function carregarMeusAgendamentos(){
-    const divAgendamentos = document.getElementById('listaMeusAgendamentos');
+async function carregarMeusAgendamentos() {
+    const listEl = document.getElementById('listaMeusAgendamentos');
+    listEl.innerHTML = '<div class="text-center py-12 text-slate-400">Carregando seus agendamentos...</div>';
+
     try {
         const response = await fetch(`${API_URL}/agendamentos/meus`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const agendamentos = await response.json();
 
-        divAgendamentos.innerHTML = '';
-        if (agendamentos.length === 0) {
-            divAgendamentos.innerHTML = '<p class="text-muted small">Não possui nenhum agendamento ativo.</p>';
+        const badgeCount = document.getElementById('badge-my-appointments-count');
+        if (badgeCount) badgeCount.textContent = agendamentos.length || 0;
+
+        listEl.innerHTML = '';
+
+        if (!agendamentos || agendamentos.length === 0) {
+            listEl.innerHTML = `
+                <div class="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 space-y-3">
+                    <div class="w-14 h-14 rounded-2xl bg-blue-50 text-senac-blue flex items-center justify-center mx-auto">
+                        <i data-lucide="calendar-plus" class="w-7 h-7"></i>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-800">Você ainda não possui agendamentos</h3>
+                    <p class="text-xs text-slate-500">Explore a vitrine de procedimentos e garanta sua vaga gratuita em uma aula prática!</p>
+                    <button onclick="setTab('vitrine')" class="mt-2 px-4 py-2.5 rounded-xl bg-senac-blue text-white text-xs font-bold hover:bg-senac-blue-dark transition-all">
+                        Explorar Vitrine
+                    </button>
+                </div>
+            `;
+            if (window.lucide) lucide.createIcons();
             return;
         }
 
         agendamentos.forEach(ag => {
-            const cursoNome = ag.disponibilidades.cursos.nome;
-            const dataHora = new Date(ag.disponibilidades.data_hora).toLocaleString('pt-BR');
-            let badge = '';
+            const dataCurso = ag.disponibilidades ? new Date(ag.disponibilidades.data_hora) : new Date();
+            const dataFormatada = dataCurso.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+            const horaFormatada = dataCurso.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const cursoNome = ag.disponibilidades && ag.disponibilidades.cursos ? ag.disponibilidades.cursos.nome : 'Curso Senac';
+            const fotoUrl = ag.disponibilidades && ag.disponibilidades.cursos && ag.disponibilidades.cursos.foto_url 
+                ? ag.disponibilidades.cursos.foto_url 
+                : 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800&auto=format&fit=crop&q=80';
+
+            // Status Badge
+            let statusBadge = '';
             let acoesHTML = '';
 
             if (ag.status === 'agendado') {
-                badge = '<span class="badge bg-primary">Confirmado</span>';
-                acoesHTML = `<button class="btn btn-sm btn-outline-danger mt-2 w-100" onclick="cancelarAgendamento('${ag.id}')">Cancelar Inscrição</button>`;
-            } else if (ag.status === 'cancelado') {
-                badge = '<span class="badge bg-danger">Cancelado</span>';
+                statusBadge = '<span class="badge-status badge-agendado">Confirmado</span>';
+                
+                // Validação de 2h
+                const agora = new Date();
+                const diffHoras = (dataCurso - agora) / (1000 * 60 * 60);
+
+                if (diffHoras >= 2) {
+                    acoesHTML = `
+                        <button onclick="cancelarAgendamento('${ag.id}', '${cursoNome}')" class="px-3 py-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition-all flex items-center gap-1.5">
+                            <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
+                            <span>Cancelar Vaga</span>
+                        </button>
+                    `;
+                } else {
+                    acoesHTML = `
+                        <span class="text-[11px] font-semibold text-slate-400" title="Cancelamento indisponível com menos de 2h de antecedência">
+                            🔒 Prazo de cancelamento encerrado
+                        </span>
+                    `;
+                }
             } else if (ag.status === 'concluido') {
-                badge = '<span class="badge bg-success">Concluído</span>';
-                // Mostra o botão para avaliar a aula prática
-                acoesHTML = `<button class="btn btn-sm btn-warning mt-2 w-100 fw-bold" onclick="abrirModalFeedback('${ag.id}')">⭐ Avaliar Serviço</button>`;
+                statusBadge = '<span class="badge-status badge-concluido">Concluído</span>';
+                acoesHTML = `
+                    <button onclick="abrirModalFeedback('${ag.id}', '${cursoNome}')" class="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
+                        <i data-lucide="star" class="w-3.5 h-3.5"></i>
+                        <span>Avaliar Atendimento</span>
+                    </button>
+                `;
+            } else {
+                statusBadge = '<span class="badge-status badge-cancelado">Cancelado</span>';
+                acoesHTML = '<span class="text-xs text-slate-400 font-medium">Vaga liberada</span>';
             }
 
-            const card = `
-                <div class="col-12 col-md-6 col-xl-4">
-                    <div class="card shadow-sm border-0 bg-white">
-                        <div class="card-body p-3">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="fw-bold text-dark">${cursoNome}</span>
-                                ${badge}
-                            </div>
-                            <div class="text-secondary small mb-2"><i class="bi bi-calendar"></i> ${dataHora}</div>
-                            ${acoesHTML}
-                            <div id="msg-canc-${ag.id}" class="small text-center mt-1"></div>
+            const item = document.createElement('div');
+            item.className = 'bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 card-hover-effect';
+            item.innerHTML = `
+                <div class="flex items-center gap-4">
+                    <img src="${fotoUrl}" alt="${cursoNome}" class="w-16 h-16 rounded-2xl object-cover border border-slate-100 flex-shrink-0">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <h4 class="font-extrabold text-base text-slate-900">${cursoNome}</h4>
+                            ${statusBadge}
                         </div>
+                        <p class="text-xs text-slate-500 flex items-center gap-1.5 font-medium">
+                            <i data-lucide="calendar" class="w-3.5 h-3.5 text-senac-blue"></i>
+                            <span>${dataFormatada} às ${horaFormatada}</span>
+                        </p>
                     </div>
                 </div>
+
+                <div class="w-full sm:w-auto flex items-center justify-end">
+                    ${acoesHTML}
+                </div>
             `;
-            divAgendamentos.innerHTML += card;
+
+            listEl.appendChild(item);
         });
-    } catch (error) {
-        divAgendamentos.innerHTML = '<p class="text-danger">Erro ao carregar histórico.</p>';
+
+        if (window.lucide) lucide.createIcons();
+
+    } catch (e) {
+        listEl.innerHTML = '<div class="text-center py-8 text-red-500 text-xs">Erro ao carregar agendamentos.</div>';
     }
 }
 
-async function cancelarAgendamento(agendamentoId){
-    if(!confirm("Tem a certeza que deseja cancelar a sua inscrição neste horário?")) return;
+async function cancelarAgendamento(id, nomeCurso) {
+    if (!confirm(`Deseja realmente cancelar seu agendamento para "${nomeCurso}"? A vaga será liberada para outro modelo.`)) return;
 
-    const msgDiv = document.getElementById(`msg-canc-${agendamentoId}`);
     try {
-        const response = await fetch(`${API_URL}/agendamentos/${agendamentoId}/cancelar`, {
+        const response = await fetch(`${API_URL}/agendamentos/${id}/cancelar`, {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -285,126 +524,85 @@ async function cancelarAgendamento(agendamentoId){
         const data = await response.json();
 
         if (response.ok) {
-            carregarMeusAgendamentos(); // Recarrega a lista para mostrar o novo status
+            showToast('Agendamento cancelado com sucesso.', 'success');
+            carregarMeusAgendamentos();
         } else {
-            msgDiv.innerHTML = `<span class="text-danger fw-bold">${data.erro}</span>`;
+            showToast(data.erro || 'Não foi possível cancelar o agendamento.', 'error');
         }
-    } catch (error) {
-        msgDiv.innerHTML = '<span class="text-danger">Erro ao processar pedido.</span>';
+    } catch (e) {
+        showToast('Erro de conexão ao cancelar agendamento.', 'error');
     }
 }
 
 // ==========================================
-// MÓDULO DE FEEDBACK
+// 5. AVALIAÇÃO / FEEDBACK (5 ESTRELAS)
 // ==========================================
-function abrirModalFeedback(agendamentoId){
+function abrirModalFeedback(agendamentoId, nomeCurso) {
     document.getElementById('feedbackAgendamentoId').value = agendamentoId;
-    document.getElementById('feedbackNota').value = '5'; // Padrão 5 estrelas
     document.getElementById('feedbackComentario').value = '';
-    document.getElementById('msgFeedback').innerHTML = '';
-    modalFeedback.show();
+    setStarRating(5);
+
+    document.getElementById('modalFeedback').classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
 }
 
-const formFeedback = document.getElementById('formFeedback');
-if (formFeedback) {
-    formFeedback.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const msgDiv = document.getElementById('msgFeedback');
-        msgDiv.innerHTML = '<span class="text-primary">A processar avaliação...</span>';
+function fecharModalFeedback() {
+    document.getElementById('modalFeedback').classList.add('hidden');
+}
 
-        const payload = {
-            agendamento_id: document.getElementById('feedbackAgendamentoId').value,
-            nota: parseInt(document.getElementById('feedbackNota').value),
-            comentario: document.getElementById('feedbackComentario').value
-        };
+function setStarRating(nota) {
+    notaFeedbackAtual = nota;
+    const labels = {
+        1: 'Péssimo (1 estrela)',
+        2: 'Regular (2 estrelas)',
+        3: 'Bom (3 estrelas)',
+        4: 'Muito Bom (4 estrelas)',
+        5: 'Excelente (5 estrelas)'
+    };
 
-        try {
-            const response = await fetch(`${API_URL}/feedbacks`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                msgDiv.innerHTML = `<span class="text-success">${data.mensagem}</span>`;
-                setTimeout(() => {
-                    modalFeedback.hide();
-                    // Opcional: Aqui podíamos atualizar a UI para esconder o botão de avaliar,
-                    // mas por agora o backend já bloqueia duplicações de forma segura.
-                }, 2000);
-            } else {
-                msgDiv.innerHTML = `<span class="text-danger">${data.erro}</span>`;
-            }
-        } catch (error) {
-            msgDiv.innerHTML = '<span class="text-danger">Erro de ligação.</span>';
+    document.getElementById('star-label').textContent = labels[nota] || `${nota} estrelas`;
+    
+    document.querySelectorAll('#star-rating-container i').forEach(star => {
+        const val = parseInt(star.getAttribute('data-val'));
+        if (val <= nota) {
+            star.className = 'w-8 h-8 cursor-pointer fill-current text-amber-400 active';
+        } else {
+            star.className = 'w-8 h-8 cursor-pointer text-slate-300';
         }
     });
 }
 
-// ==========================================
-// HISTÓRICO PESSOAL DE AVALIAÇÕES
-// ==========================================
-async function carregarMeusFeedbacks(){
-    const divFeedbacks = document.getElementById('listaMeusFeedbacks');
+async function enviarFeedback() {
+    const agendamentoId = document.getElementById('feedbackAgendamentoId').value;
+    const comentario = document.getElementById('feedbackComentario').value.trim();
+
     try {
-        const response = await fetch(`${API_URL}/feedbacks/meus`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+        const response = await fetch(`${API_URL}/feedbacks`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                agendamento_id: agendamentoId,
+                nota: notaFeedbackAtual,
+                comentario: comentario
+            })
         });
-        const feedbacks = await response.json();
 
-        divFeedbacks.innerHTML = '';
-        if (feedbacks.length === 0) {
-            divFeedbacks.innerHTML = '<p class="text-muted small">Ainda não realizou nenhuma avaliação.</p>';
-            return;
+        const data = await response.json();
+
+        if (response.ok) {
+            fecharModalFeedback();
+            showToast('Obrigado pela sua avaliação! ⭐', 'success');
+            carregarMeusAgendamentos();
+        } else {
+            showToast(data.erro || 'Erro ao enviar avaliação.', 'error');
         }
-
-        feedbacks.forEach(f => {
-            const estrelas = '⭐'.repeat(f.nota);
-            const dataFormatada = new Date(f.created_at).toLocaleDateString('pt-BR');
-            const comentarioTexto = f.comentario ? `"${f.comentario}"` : 'Apenas nota, sem texto.';
-
-            const card = `
-                <div class="col-12 col-md-6 col-lg-4">
-                    <div class="card shadow-sm border-0 bg-white h-100">
-                        <div class="card-body p-4">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="fw-bold text-dark text-truncate">${f.curso_nome}</span>
-                                <span class="badge bg-light text-dark">${dataFormatada}</span>
-                            </div>
-                            <div class="mb-3 fs-5">${estrelas}</div>
-                            <p class="text-secondary small mb-0 fst-italic">${comentarioTexto}</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            divFeedbacks.innerHTML += card;
-        });
-    } catch (error) {
-        divFeedbacks.innerHTML = '<p class="text-danger">Erro ao carregar o histórico de avaliações.</p>';
+    } catch (e) {
+        showToast('Erro de conexão ao enviar avaliação.', 'error');
     }
 }
 
-// [QoL] Lógica de Navegação de Retorno
-document.addEventListener('DOMContentLoaded', () => {
-    // Decodifica o token para ver quem está logado
-    if(token) {
-        const payloadToken = JSON.parse(atob(token.split('.')[1]));
-        const navbar = document.querySelector('.navbar-nav');
-
-        if (payloadToken.perfil === 'admin' || payloadToken.perfil === 'coordenador') {
-            navbar.innerHTML += `<li class="nav-item"><a class="nav-link text-warning fw-bold" href="admin.html">⬅️ Voltar ao Backoffice</a></li>`;
-        } else if (payloadToken.perfil === 'profissional') {
-            navbar.innerHTML += `<li class="nav-item"><a class="nav-link text-warning fw-bold" href="profissional.html">⬅️ Voltar à Pauta</a></li>`;
-        }
-    }
-});
-
-// Inicializa a página carregando tudo
-carregarMeusFeedbacks();
+// Inicialização
 carregarCursos();
-carregarMeusAgendamentos();

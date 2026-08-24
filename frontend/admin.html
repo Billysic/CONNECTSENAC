@@ -1,405 +1,408 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
-
+<html lang="pt-BR" class="h-full">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connect Senac - Central de Administração</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background-color: #f4f7f6;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connect Senac | Central Administrativa & Coordenação</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            senac: {
+              blue: '#004a8d',
+              'blue-dark': '#002d57',
+              'blue-light': '#e6f0fa',
+              orange: '#f29100',
+              'orange-dark': '#d97706',
+              'orange-light': '#fff8eb'
+            }
+          }
         }
+      }
+    }
+  </script>
 
-        .nav-tabs .nav-link {
-            border: none;
-            color: #555;
-            font-weight: 600;
-            padding: 1rem 1.5rem;
-        }
-
-        .nav-tabs .nav-link.active {
-            color: #004a8d;
-            border-bottom: 3px solid #004a8d;
-            background: transparent;
-        }
-
-        .card {
-            border: none;
-            border-radius: 12px;
-        }
-
-        .btn-brand {
-            background-color: #004a8d;
-            color: white;
-            font-weight: 600;
-            border-radius: 8px;
-        }
-
-        .btn-brand:hover {
-            background-color: #003366;
-            color: white;
-        }
-
-        .section-title {
-            color: #004a8d;
-            font-weight: 700;
-            font-size: 1.2rem;
-        }
-    </style>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/styles.css">
 </head>
+<body class="flex flex-col min-h-screen bg-slate-50 text-slate-800 antialiased selection:bg-orange-100 selection:text-orange-900">
 
-<body>
-
-    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm" style="background-color: #004a8d;">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="#">Connect Senac <span class="badge bg-light text-dark ms-2">Admin
-                    Hub</span></a>
-            <a href="painel.html" class="btn btn-sm btn-outline-warning me-2 fw-bold">👁️ Ver Visão do Modelo</a>
-            <button class="btn btn-outline-light btn-sm" id="btnSair">Sair</button>
+  <!-- ========================================== -->
+  <!-- 🏛️ NAVBAR PRINCIPAL ADMIN/COORD             -->
+  <!-- ========================================== -->
+  <header class="glass-nav border-b border-slate-200 sticky top-0 z-40 shadow-sm transition-all">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-20">
+        
+        <!-- Logo & Marca -->
+        <div class="flex items-center gap-4">
+          <a href="admin.html" class="flex items-center gap-3 group">
+            <div class="w-11 h-11 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform">
+              <span class="font-extrabold text-xl tracking-wider text-amber-400">S</span>
+              <div class="w-1.5 h-1.5 bg-senac-orange rounded-full ml-0.5"></div>
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-xl font-extrabold text-slate-900 tracking-tight">CONNECT</span>
+                <span class="text-xl font-bold text-senac-orange tracking-tight">ADMIN</span>
+              </div>
+              <p class="text-[10px] font-semibold text-slate-500 tracking-wider uppercase">Gestão & Governança Pedagógica</p>
+            </div>
+          </a>
         </div>
-    </nav>
 
-    <div class="bg-white border-bottom py-2 mb-4">
-        <div class="container d-flex justify-content-between align-items-center">
-            <span class="text-muted small">Ligado como: <strong id="userNome">--</strong></span>
-            <span class="badge bg-secondary" id="userPerfil">--</span>
+        <!-- Área do Usuário & Perfil Atual -->
+        <div class="flex items-center gap-3">
+          <div class="text-right hidden sm:block">
+            <div id="userNome" class="text-sm font-bold text-slate-800 leading-tight">Carregando...</div>
+            <div class="flex items-center justify-end gap-1.5 mt-0.5">
+              <span id="userPerfil" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-900 text-amber-400">
+                ADMIN
+              </span>
+            </div>
+          </div>
+
+          <a href="painel.html" class="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors text-xs font-bold flex items-center gap-1.5">
+            <i data-lucide="eye" class="w-4 h-4 text-senac-blue"></i>
+            <span class="hidden sm:inline">Visão do Modelo</span>
+          </a>
+
+          <button id="btnSair" class="p-2 rounded-xl bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-600 transition-colors text-xs font-bold flex items-center gap-1.5 border border-slate-200" title="Sair da conta">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">Sair</span>
+          </button>
         </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- 🚀 MAIN CONTENT CONTAINER                 -->
+  <!-- ========================================== -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fade-in">
+
+    <!-- KPI STATS CARDS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-blue-50 text-senac-blue flex items-center justify-center font-bold text-xl">
+          <i data-lucide="users" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Usuários</span>
+          <h3 id="metricUsuarios" class="text-2xl font-black text-slate-900 mt-0.5">0</h3>
+        </div>
+      </div>
+
+      <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-amber-50 text-senac-orange flex items-center justify-center font-bold text-xl">
+          <i data-lucide="calendar-check" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Agendados</span>
+          <h3 id="metricAgendados" class="text-2xl font-black text-slate-900 mt-0.5">0</h3>
+        </div>
+      </div>
+
+      <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xl">
+          <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Concluídos</span>
+          <h3 id="metricConcluidos" class="text-2xl font-black text-slate-900 mt-0.5">0</h3>
+        </div>
+      </div>
+
+      <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center font-bold text-xl">
+          <i data-lucide="percent" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Taxa Cancelamento</span>
+          <h3 id="metricCancelamento" class="text-2xl font-black text-slate-900 mt-0.5">0%</h3>
+        </div>
+      </div>
     </div>
 
-    <div class="container pb-5">
-
-        <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
-            <li class="nav-item">
-                <button class="nav-link active" id="visao-tab" data-bs-toggle="tab" data-bs-target="#visao"
-                    type="button">📊 Visão Geral</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" id="usuarios-tab" data-bs-toggle="tab" data-bs-target="#usuarios"
-                    type="button">👥 Utilizadores & Moderação</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" id="equipa-tab" data-bs-toggle="tab" data-bs-target="#equipa" type="button">🔑
-                    Criar Colaborador</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" id="catalogo-tab" data-bs-toggle="tab" data-bs-target="#catalogo"
-                    type="button">🏷️ Gestão de Cursos</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" id="pautas-tab" data-bs-toggle="tab" data-bs-target="#pautas" type="button">📅 Pautas Globais</button>
-            </li>
-            <div class="tab-pane fade" id="pautas">
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
-                    <h5 class="fw-bold mb-4" style="color: #004a8d;">📅 Pautas e Inscrições por Turma</h5>
-                    <div class="accordion shadow-sm" id="accordionPautasGlobais">
-                        <div class="text-center text-muted">A carregar a visão global...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        </ul>
-
-        <div class="tab-content" id="adminTabsContent">
-
-            <div class="tab-pane fade show active" id="visao">
-                <div class="row g-3 mb-4" id="painelMetricas">
-                    <div class="col-sm-6 col-lg-3">
-                        <div class="card shadow-sm border-start border-primary border-4 py-2">
-                            <div class="card-body">
-                                <div class="text-muted small fw-bold text-uppercase">Modelos</div>
-                                <h3 class="mb-0 fw-bold" id="metricUsuarios">--</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-sm-6 col-lg-3">
-                        <div class="card shadow-sm border-start border-success border-4 py-2">
-                            <div class="card-body">
-                                <div class="text-muted small fw-bold text-uppercase">Ativos</div>
-                                <h3 class="mb-0 fw-bold" id="metricAgendados">--</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-sm-6 col-lg-3">
-                        <div class="card shadow-sm border-start border-warning border-4 py-2">
-                            <div class="card-body">
-                                <div class="text-muted small fw-bold text-uppercase">Concluídos</div>
-                                <h3 class="mb-0 fw-bold" id="metricConcluidos">--</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-sm-6 col-lg-3">
-                        <div class="card shadow-sm border-start border-danger border-4 py-2">
-                            <div class="card-body">
-                                <div class="text-muted small fw-bold text-uppercase">Cancelamentos</div>
-                                <h3 class="mb-0 fw-bold" id="metricCancelamento">--</h3>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row g-4">
-                    <div class="col-lg-6">
-                        <div class="card shadow-sm">
-                            <div class="card-header py-3">
-                                <h6 class="mb-0 section-title">📚 Cadastrar Curso</h6>
-                            </div>
-                            <div class="card-body p-4">
-                                <form id="formCurso">
-                                    <div class="form-floating mb-3">
-                                        <input type="text" class="form-control" id="nomeCurso" required>
-                                        <label>Nome do Curso</label>
-                                    </div>
-                                    <div class="form-floating mb-3">
-                                        <select class="form-select" id="selectProfissional" required>
-                                            <option value="" disabled selected>Carregando professores...</option>
-                                        </select>
-                                        <label for="selectProfissional">Professor Responsável</label>
-                                    </div>
-                                    <div class="form-floating mb-3">
-                                        <textarea class="form-control" id="descricaoCurso" style="height: 80px"
-                                            required></textarea>
-                                        <label>Descrição</label>
-                                    </div>
-                                    <div class="form-floating mb-3">
-                                        <textarea class="form-control" id="motivoCurso" style="height: 60px"></textarea>
-                                        <label>Benefícios</label>
-                                    </div>
-                                    <div class="form-floating mb-3">
-                                        <textarea class="form-control" id="restricoesCurso"
-                                            style="height: 60px"></textarea>
-                                        <label>Restrições para Modelos</label>
-                                    </div>
-
-                                    <div class="form-floating mb-3">
-                                        <input type="url" class="form-control" id="fotoCurso"
-                                            placeholder="https://exemplo.com/imagem.jpg">
-                                        <label>URL da Imagem de Capa</label>
-                                    </div>
-                                    <div class="form-floating mb-3">
-                                        <input type="text" class="form-control" id="localCurso"
-                                            value="SENAC - Santo Antônio de Jesus, BA" required>
-                                        <label>Localização / Endereço</label>
-                                    </div>
-
-                                    <div id="msgCurso" class="mb-3 text-center small fw-bold"></div>
-                                    <button type="submit" class="btn btn-brand w-100">Salvar Curso</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-6">
-                        <div class="card shadow-sm">
-                            <div class="card-header py-3">
-                                <h6 class="mb-0 section-title">📅 Disponibilizar Vagas</h6>
-                            </div>
-                            <div class="card-body p-4">
-                                <form id="formVagas">
-                                    <div class="form-floating mb-3">
-                                        <select class="form-select" id="selectCurso" required>
-                                            <option value="" disabled selected>A carregar...</option>
-                                        </select>
-                                        <label>Vincular ao Curso</label>
-                                    </div>
-                                    <div class="row g-2 mb-3">
-                                        <div class="col-8">
-                                            <div class="form-floating">
-                                                <input type="datetime-local" class="form-control" id="dataHora"
-                                                    required>
-                                                <label>Data e Hora</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-4">
-                                            <div class="form-floating">
-                                                <input type="number" class="form-control" id="vagasTotais" min="1"
-                                                    required>
-                                                <label>Vagas</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div id="msgVaga" class="mb-3 text-center small fw-bold"></div>
-                                    <button type="submit" class="btn btn-success w-100">Abrir Horário</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="tab-pane fade" id="catalogo">
-                <div class="card shadow-sm border-0">
-                    <div class="card-body p-4">
-                        <h5 class="fw-bold mb-4" style="color: #004a8d;">🏷️ Catálogo de Cursos</h5>
-                        <div class="table-responsive">
-                            <table class="table align-middle table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Curso</th>
-                                        <th>Professor</th>
-                                        <th>Localização</th>
-                                        <th>Status</th>
-                                        <th class="text-end">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tabelaCursosBody">
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted py-4">A carregar catálogo...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="tab-pane fade" id="usuarios">
-                <div class="card shadow-sm">
-                    <div class="card-body p-4">
-                        <h5 class="fw-bold mb-4" style="color: #004a8d;">👥 Base de Utilizadores e Histórico</h5>
-                        <!-- Bloco de Filtros Inteligentes -->
-                        <div class="row g-2 mb-3 bg-light p-3 rounded border">
-                            <div class="col-md-6">
-                                <input type="text" class="form-control" id="filtroTextoUser"
-                                    placeholder="🔍 Buscar por Nome ou E-mail...">
-                            </div>
-                            <div class="col-md-4">
-                                <select class="form-select" id="filtroPerfilUser">
-                                    <option value="">Todos os Perfis</option>
-                                    <option value="candidato">Candidatos (Modelos)</option>
-                                    <option value="profissional">Profissionais (Professores)</option>
-                                    <option value="coordenador">Coordenadores</option>
-                                    <option value="admin">Administradores</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <!-- Opcional: Um botão para limpar os filtros -->
-                                <button class="btn btn-outline-secondary w-100" id="btnLimparFiltros">Limpar</button>
-                            </div>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table align-middle table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Nome</th>
-                                        <th>E-mail / Contato</th>
-                                        <th>Função</th>
-                                        <th>Matrícula Ativa</th>
-                                        <th class="text-center">Confirmados</th>
-                                        <th class="text-center">Concluídos</th>
-                                        <th class="text-center">Cancelados</th>
-                                        <th class="text-end">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tabelaUsuariosBody">
-                                    <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">A carregar utilizadores...
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="tab-pane fade" id="equipa">
-                <div class="row justify-content-center">
-                    <div class="col-md-8 col-lg-6">
-                        <div class="card shadow-sm">
-                            <div class="card-body p-5">
-                                <h5 class="fw-bold text-center mb-4" style="color: #004a8d;">🔑 Registar Membro da
-                                    Equipa</h5>
-                                <form id="formColaborador">
-                                    <div class="form-floating mb-3">
-                                        <input type="text" class="form-control" id="colabNome" required>
-                                        <label>Nome Completo</label>
-                                    </div>
-                                    <div class="form-floating mb-3">
-                                        <input type="email" class="form-control" id="colabEmail" required>
-                                        <label>E-mail Institucional</label>
-                                    </div>
-                                    <div class="form-floating mb-3">
-                                        <input type="tel" class="form-control" id="colabTelefone" required>
-                                        <label>Telefone</label>
-                                    </div>
-                                    <div class="form-floating mb-3">
-                                        <input type="password" class="form-control" id="colabSenha" required>
-                                        <label>Palavra-passe Inicial</label>
-                                    </div>
-                                    <div class="form-floating mb-4">
-                                        <select class="form-select" id="colabPerfil" required>
-                                            <option value="profissional">Profissional (Professor)</option>
-                                            <option value="coordenador">Coordenador da Unidade</option>
-                                            <option value="admin">Administrador Global</option>
-                                        </select>
-                                        <label>Cargo / Permissão</label>
-                                    </div>
-                                    <div id="msgColab" class="mb-3 text-center small fw-bold"></div>
-                                    <button type="submit" class="btn btn-brand w-100 py-3">Criar Acesso</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal fade" id="modalEditarCurso" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered modal-lg">
-                    <div class="modal-content rounded-4 border-0 shadow">
-                        <div class="modal-header border-bottom-0 pb-0">
-                            <h5 class="modal-title fw-bold text-primary">✏️ Editar Curso</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body p-4">
-                            <form id="formEditarCurso">
-                                <input type="hidden" id="editCursoId">
-
-                                <div class="form-floating mb-3">
-                                    <input type="text" class="form-control" id="editNome" required>
-                                    <label>Nome do Curso</label>
-                                </div>
-
-                                <div class="row g-3 mb-3">
-                                    <div class="col-md-6">
-                                        <div class="form-floating">
-                                            <select class="form-select" id="editProfissional" required></select>
-                                            <label>Professor Responsável</label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="form-floating">
-                                            <input type="text" class="form-control" id="editLocal">
-                                            <label>Localização</label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="form-floating mb-3">
-                                    <textarea class="form-control" id="editDescricao" style="height: 80px"
-                                        required></textarea>
-                                    <label>Descrição</label>
-                                </div>
-
-                                <div class="form-floating mb-3">
-                                    <input type="url" class="form-control" id="editFoto">
-                                    <label>URL da Imagem de Capa</label>
-                                </div>
-
-                                <div id="msgEditCurso" class="mb-3 text-center small fw-bold"></div>
-                                <button type="submit" class="btn btn-primary w-100 fw-bold">Atualizar Curso</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
+    <!-- ABAS ADMINISTRATIVAS -->
+    <div class="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto">
+      <button onclick="setAdminTab('usuarios')" id="tab-admin-usuarios" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-slate-900 text-white shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+        <i data-lucide="shield-check" class="w-4 h-4"></i>
+        Usuários & RBAC
+      </button>
+      <button onclick="setAdminTab('cursos')" id="tab-admin-cursos" class="px-4 py-2 rounded-xl text-xs font-semibold transition-all text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 whitespace-nowrap">
+        <i data-lucide="book-open" class="w-4 h-4"></i>
+        Cursos & Procedimentos
+      </button>
+      <button onclick="setAdminTab('horarios')" id="tab-admin-horarios" class="px-4 py-2 rounded-xl text-xs font-semibold transition-all text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 whitespace-nowrap">
+        <i data-lucide="clock" class="w-4 h-4"></i>
+        Grade de Horários & Vagas
+      </button>
+      <button onclick="setAdminTab('pautas')" id="tab-admin-pautas" class="px-4 py-2 rounded-xl text-xs font-semibold transition-all text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 whitespace-nowrap">
+        <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+        Pautas Globais
+      </button>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/admin.js"></script>
+    <!-- ========================================== -->
+    <!-- 1️⃣ ABA: USUÁRIOS & RBAC (MODERAÇÃO)        -->
+    <!-- ========================================== -->
+    <div id="subview-admin-usuarios" class="space-y-4 animate-fade-in">
+      <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        
+        <div class="p-6 border-b border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h3 class="font-extrabold text-slate-900 text-base">Controle de Usuários & Cargos (RBAC)</h3>
+            <p class="text-xs text-slate-500 mt-0.5">Altere cargos, gerencie bloqueios ou crie colaboradores institucionais.</p>
+          </div>
+
+          <div class="flex items-center gap-3 w-full sm:w-auto">
+            <div class="relative flex-grow sm:w-64">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+              <input type="text" id="adminUserSearch" oninput="filtrarTabelaUsuarios()" placeholder="Buscar usuário..." class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-slate-900 bg-slate-50/50">
+            </div>
+
+            <button id="btnOpenNewColab" onclick="abrirModalColaborador()" class="px-3.5 py-2 rounded-xl bg-senac-orange hover:bg-senac-orange-dark text-white text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shadow-sm">
+              <i data-lucide="user-plus" class="w-4 h-4"></i>
+              <span>Novo Colaborador</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-[10px] border-b border-slate-200">
+              <tr>
+                <th class="px-6 py-3.5">Nome</th>
+                <th class="px-6 py-3.5">E-mail</th>
+                <th class="px-6 py-3.5">Telefone</th>
+                <th class="px-6 py-3.5">Cargo / Perfil</th>
+                <th class="px-6 py-3.5">Status</th>
+                <th class="px-6 py-3.5 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaUsuariosBody" class="divide-y divide-slate-100 bg-white">
+              <tr><td colspan="6" class="p-6 text-center text-slate-400">Carregando usuários...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 2️⃣ ABA: GESTÃO DE CURSOS                   -->
+    <!-- ========================================== -->
+    <div id="subview-admin-cursos" class="hidden space-y-4 animate-fade-in">
+      <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        
+        <div class="p-6 border-b border-slate-200 flex items-center justify-between gap-4">
+          <div>
+            <h3 class="font-extrabold text-slate-900 text-base">Catálogo de Cursos e Procedimentos</h3>
+            <p class="text-xs text-slate-500 mt-0.5">Cadastre e gerencie os serviços ofertados na vitrine aos voluntários.</p>
+          </div>
+
+          <button onclick="abrirModalNovoCurso()" class="px-3.5 py-2 rounded-xl bg-senac-blue hover:bg-senac-blue-dark text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Cadastrar Novo Curso</span>
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-500 uppercase font-bold text-[10px] border-b border-slate-200">
+              <tr>
+                <th class="px-6 py-3.5">Procedimento</th>
+                <th class="px-6 py-3.5">Docente Responsável</th>
+                <th class="px-6 py-3.5">Localização</th>
+                <th class="px-6 py-3.5">Status</th>
+                <th class="px-6 py-3.5 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaCursosBody" class="divide-y divide-slate-100 bg-white">
+              <tr><td colspan="5" class="p-6 text-center text-slate-400">Carregando cursos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 3️⃣ ABA: GRADE DE HORÁRIOS & VAGAS          -->
+    <!-- ========================================== -->
+    <div id="subview-admin-horarios" class="hidden space-y-4 animate-fade-in">
+      <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div>
+            <h3 class="font-extrabold text-slate-900 text-base">Abrir Nova Grade de Horários</h3>
+            <p class="text-xs text-slate-500 mt-0.5">Disponibilize novas datas e capacidade de vagas para um curso.</p>
+          </div>
+        </div>
+
+        <form id="formNovaGrade" onsubmit="criarGradeHorario(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-1.5">Curso / Procedimento</label>
+            <select id="gradeCursoId" required class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-senac-blue">
+              <option value="">Selecione o curso...</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-1.5">Data e Horário</label>
+            <input type="datetime-local" id="gradeDataHora" required class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-senac-blue">
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-1.5">Vagas Totais</label>
+            <div class="flex items-center gap-2">
+              <input type="number" id="gradeVagas" min="1" max="50" value="5" required class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-senac-blue">
+              <button type="submit" class="px-4 py-2.5 rounded-xl bg-senac-blue hover:bg-senac-blue-dark text-white font-bold transition-all whitespace-nowrap">
+                Publicar Vaga
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 4️⃣ ABA: PAUTAS GLOBAIS                    -->
+    <!-- ========================================== -->
+    <div id="subview-admin-pautas" class="hidden space-y-4 animate-fade-in">
+      <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+        <h3 class="font-extrabold text-slate-900 text-base">Pautas Globais de Atendimentos</h3>
+        <p class="text-xs text-slate-500">Visão unificada de todas as aulas e presenças da unidade.</p>
+
+        <div id="listaPautasGlobais" class="space-y-4 pt-2">
+          <div class="text-center py-8 text-slate-400 text-xs">Carregando pautas...</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ======================================================== -->
+  <!-- 🪟 MODALS DO ADMIN                                       -->
+  <!-- ======================================================== -->
+
+  <!-- 1. MODAL NOVO COLABORADOR (ADMIN) -->
+  <div id="modalNovoColaborador" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl animate-modal-pop border border-slate-100 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-base font-extrabold text-slate-900">Novo Colaborador Institucional</h3>
+        <button onclick="fecharModalColaborador()" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="formNovoColab" onsubmit="criarColaborador(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 uppercase mb-1">Nome Completo</label>
+          <input type="text" id="colabNome" required placeholder="Ex: Roberto Lima" class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-slate-900">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 uppercase mb-1">E-mail Institucional</label>
+          <input type="email" id="colabEmail" required placeholder="roberto.lima@sp.senac.br" class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-slate-900">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-1">Telefone / WhatsApp</label>
+            <input type="tel" id="colabTelefone" required placeholder="(11) 98888-0000" class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-slate-900">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-1">Perfil / Cargo</label>
+            <select id="colabPerfil" required class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-slate-900">
+              <option value="profissional">Docente (Profissional)</option>
+              <option value="coordenador">Coordenador</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 uppercase mb-1">Palavra-passe Temporária</label>
+          <input type="password" id="colabSenha" required placeholder="••••••••" class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-slate-900">
+        </div>
+
+        <div class="flex items-center gap-3 pt-3">
+          <button type="button" onclick="fecharModalColaborador()" class="w-1/2 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">
+            Cancelar
+          </button>
+          <button type="submit" class="w-1/2 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold">
+            Salvar Colaborador
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. MODAL NOVO CURSO -->
+  <div id="modalNovoCurso" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl animate-modal-pop border border-slate-100 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-base font-extrabold text-slate-900">Cadastrar Novo Procedimento</h3>
+        <button onclick="fecharModalNovoCurso()" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="formNovoCurso" onsubmit="criarCurso(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 uppercase mb-1">Nome do Curso / Procedimento</label>
+          <input type="text" id="cursoNome" required placeholder="Ex: Limpeza de Pele Profunda" class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-senac-blue">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-1">Docente Responsável</label>
+            <select id="cursoProfissionalId" required class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-senac-blue">
+              <option value="">Carregando professores...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-1">Localização (Laboratório)</label>
+            <input type="text" id="cursoLocalizacao" value="Laboratório de Estética - Sala 102" required class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-senac-blue">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 uppercase mb-1">Descrição</label>
+          <textarea id="cursoDescricao" rows="2" required placeholder="Objetivo pedagógico e passos do atendimento..." class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-senac-blue"></textarea>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 uppercase mb-1">Restrições / Contraindicações Sanitárias</label>
+          <input type="text" id="cursoRestricoes" placeholder="Ex: Contraindicado para gestantes..." class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-senac-blue">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 uppercase mb-1">URL da Imagem de Capa</label>
+          <input type="url" id="cursoFotoUrl" value="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&auto=format&fit=crop&q=80" class="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-senac-blue">
+        </div>
+
+        <div class="flex items-center gap-3 pt-3">
+          <button type="button" onclick="fecharModalNovoCurso()" class="w-1/2 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">
+            Cancelar
+          </button>
+          <button type="submit" class="w-1/2 py-2.5 rounded-xl bg-senac-blue hover:bg-senac-blue-dark text-white text-xs font-bold">
+            Publicar Curso
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="js/admin.js"></script>
 </body>
-
 </html>
