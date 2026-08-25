@@ -1,5 +1,15 @@
 // backend/config/database.js
 require('dotenv').config();
+
+// Garantir compatibilidade nativa de WebSocket para o Supabase Realtime em qualquer versão do Node
+if (typeof globalThis.WebSocket === 'undefined') {
+    try {
+        globalThis.WebSocket = require('ws');
+    } catch (e) {
+        // ws fallback
+    }
+}
+
 const { createClient } = require('@supabase/supabase-js');
 
 // Buscando as variáveis de ambiente protegidas
