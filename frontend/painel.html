@@ -1,73 +1,389 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-BR" class="h-full">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connect Senac - Meu Painel</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connect Senac | Portal do Modelo Voluntário</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            senac: {
+              blue: '#004a8d',
+              'blue-dark': '#002d57',
+              'blue-light': '#e6f0fa',
+              orange: '#f29100',
+              'orange-dark': '#d97706',
+              'orange-light': '#fff8eb'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="bg-light">
+<body class="flex flex-col min-h-screen bg-slate-50 text-slate-800 antialiased selection:bg-orange-100 selection:text-orange-900">
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-        <div class="container">
-            <span class="navbar-brand">Connect Senac</span>
-            <button class="btn btn-danger btn-sm" onclick="terminarSessao()">Sair</button>
-        </div>
-    </nav>
-
-    <div class="container">
-        <div class="row">
-            <div class="col-md-5 mb-4">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title text-primary mb-3">Agendar Serviço</h5>
-                        <form id="formAgendamento">
-                            <div class="mb-3">
-                                <label for="servico" class="form-label">Serviço Desejado</label>
-                                <select class="form-select" id="servico" required>
-                                    <option value="" disabled selected>Selecione um serviço...</option>
-                                    <option value="1">Corte de Cabelo (Modelo)</option>
-                                    <option value="2">Maquiagem Artística</option>
-                                    <option value="3">Manicure e Pedicure</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="dataHora" class="form-label">Data e Hora</label>
-                                <input type="datetime-local" class="form-control" id="dataHora" required>
-                            </div>
-
-                            <div id="msgAgendamento" class="mb-2"></div>
-
-                            <button type="submit" class="btn btn-success w-100">Confirmar Agendamento</button>
-                        </form>
-                    </div>
-                </div>
+  <!-- ========================================== -->
+  <!-- 🏛️ NAVBAR PRINCIPAL SENAC                  -->
+  <!-- ========================================== -->
+  <header class="glass-nav border-b border-slate-200 sticky top-0 z-40 shadow-sm transition-all">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-20">
+        
+        <!-- Logo & Marca -->
+        <div class="flex items-center gap-4">
+          <a href="painel.html" class="flex items-center gap-3 group">
+            <div class="w-11 h-11 rounded-xl bg-senac-blue flex items-center justify-center text-white shadow-md shadow-blue-900/20 group-hover:scale-105 transition-transform">
+              <span class="font-extrabold text-xl tracking-wider">S</span>
+              <div class="w-1.5 h-1.5 bg-senac-orange rounded-full ml-0.5"></div>
             </div>
-
-            <div class="col-md-7">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h5 class="card-title text-primary mb-3">Meus Agendamentos</h5>
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Data/Hora</th>
-                                        <th>Serviço</th>
-                                        <th>Estado</th>
-                                        <th>Ação</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tabelaAgendamentos">
-                                    </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-xl font-extrabold text-senac-blue tracking-tight">CONNECT</span>
+                <span class="text-xl font-bold text-senac-orange tracking-tight">SENAC</span>
+              </div>
+              <p class="text-[10px] font-semibold text-slate-500 tracking-wider uppercase">Modelos para Cursos Práticos</p>
             </div>
+          </a>
         </div>
+
+        <!-- Área do Usuário & Perfil Atual -->
+        <div class="flex items-center gap-3">
+          <div class="text-right hidden sm:block">
+            <div id="nav-user-name" class="text-sm font-bold text-slate-800 leading-tight">Carregando...</div>
+            <div class="flex items-center justify-end gap-1.5 mt-0.5">
+              <span id="nav-user-badge" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-800">
+                Modelo
+              </span>
+            </div>
+          </div>
+          
+          <button id="btnSair" class="p-2 rounded-xl bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-600 transition-colors text-xs font-bold flex items-center gap-1.5 border border-slate-200" title="Sair da conta">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">Sair</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- 🚀 MAIN CONTENT CONTAINER                 -->
+  <!-- ========================================== -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- Sub-aba de Navegação do Candidato -->
+    <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+      <div class="flex items-center gap-2">
+        <button onclick="setTab('vitrine')" id="tab-btn-vitrine" class="px-4 py-2 rounded-xl text-sm font-bold transition-all bg-senac-blue text-white shadow-sm flex items-center gap-2">
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+          Vitrine de Procedimentos
+        </button>
+        <button onclick="setTab('meus-agendamentos')" id="tab-btn-meus-agendamentos" class="px-4 py-2 rounded-xl text-sm font-semibold transition-all text-slate-600 hover:bg-slate-100 flex items-center gap-2">
+          <i data-lucide="calendar-check" class="w-4 h-4"></i>
+          Meus Agendamentos
+          <span id="badge-my-appointments-count" class="ml-1 px-2 py-0.5 text-xs rounded-full bg-slate-200 text-slate-700 font-bold">0</span>
+        </button>
+        <button onclick="setTab('como-funciona')" id="tab-btn-como-funciona" class="px-4 py-2 rounded-xl text-sm font-semibold transition-all text-slate-600 hover:bg-slate-100 hidden sm:flex items-center gap-2">
+          <i data-lucide="help-circle" class="w-4 h-4"></i>
+          Como Funciona
+        </button>
+      </div>
+
+      <div class="text-xs text-slate-500 font-medium hidden md:block">
+        <i data-lucide="shield-check" class="w-4 h-4 inline text-emerald-600 mr-1"></i> Procedimentos gratuitos supervisionados por docentes
+      </div>
     </div>
 
-    <script src="js/painel.js"></script>
+    <!-- ========================================== -->
+    <!-- 1️⃣ SUBVIEW: VITRINE DE CURSOS              -->
+    <!-- ========================================== -->
+    <div id="subview-vitrine" class="space-y-6 animate-fade-in">
+      
+      <!-- Hero Banner Institucional -->
+      <div class="bg-senac-hero rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-sm relative overflow-hidden">
+        <div class="max-w-2xl relative z-10 space-y-4">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold uppercase tracking-wider">
+            <i data-lucide="award" class="w-4 h-4 text-senac-orange"></i> Programa de Modelos Voluntários Senac
+          </div>
+          <h1 class="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
+            Receba procedimentos estéticos e técnicos com <span class="text-senac-blue underline decoration-senac-orange decoration-4">excelência Senac</span>.
+          </h1>
+          <p class="text-sm sm:text-base text-slate-600 leading-relaxed">
+            Alunos dedicados praticando sob orientação de professores especialistas. Agende seu horário gratuitamente e contribua para a formação profissional de nossos talentos.
+          </p>
+        </div>
+
+        <div class="absolute -right-12 -bottom-12 w-96 h-96 bg-gradient-to-br from-senac-orange/10 to-senac-blue/10 rounded-full blur-3xl pointer-events-none"></div>
+      </div>
+
+      <!-- Filtros & Barra de Busca -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+        <!-- Campo de Busca -->
+        <div class="relative w-full md:w-96">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+          <input type="text" id="filter-search-input" oninput="filtrarCursos()" placeholder="Buscar por procedimento, área ou docente..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-senac-blue focus:border-transparent transition-all bg-slate-50/50">
+        </div>
+
+        <!-- Filtros Rápidos por Categoria -->
+        <div class="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
+          <button onclick="filtrarCategoria('todas')" class="filter-cat-btn px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900 text-white transition-all whitespace-nowrap" data-cat="todas">
+            Todas as Áreas
+          </button>
+          <button onclick="filtrarCategoria('Estética Facial')" class="filter-cat-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap" data-cat="Estética Facial">
+            Estética Facial
+          </button>
+          <button onclick="filtrarCategoria('Barbearia')" class="filter-cat-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap" data-cat="Barbearia">
+            Barbearia
+          </button>
+          <button onclick="filtrarCategoria('Massoterapia')" class="filter-cat-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap" data-cat="Massoterapia">
+            Massoterapia
+          </button>
+          <button onclick="filtrarCategoria('Cabelos')" class="filter-cat-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap" data-cat="Cabelos">
+            Cabelos & Cortes
+          </button>
+          <button onclick="filtrarCategoria('Maquiagem')" class="filter-cat-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap" data-cat="Maquiagem">
+            Maquiagem
+          </button>
+        </div>
+      </div>
+
+      <!-- Grid de Cards de Cursos -->
+      <div id="listaCursos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Renderizado dinamicamente via painel.js -->
+        <div class="col-span-full text-center py-12 text-slate-400">Carregando catálogo de procedimentos...</div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 2️⃣ SUBVIEW: MEUS AGENDAMENTOS             -->
+    <!-- ========================================== -->
+    <div id="subview-meus-agendamentos" class="hidden space-y-6 animate-fade-in">
+      <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-extrabold text-slate-900">Histórico de Agendamentos</h2>
+          <p class="text-xs text-slate-500 mt-1">Acompanhe seus horários confirmados, presenças concluídas e avaliações.</p>
+        </div>
+        <div class="bg-amber-50 border border-amber-200/80 rounded-2xl p-3 text-xs text-amber-900 max-w-md flex items-start gap-2">
+          <i data-lucide="info" class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"></i>
+          <div>
+            <span class="font-bold">Regra de Cancelamento:</span> Cancelamentos só são aceitos com no mínimo <strong>2 horas de antecedência</strong> do horário agendado.
+          </div>
+        </div>
+      </div>
+
+      <div id="listaMeusAgendamentos" class="space-y-4">
+        <!-- Injetado via painel.js -->
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 3️⃣ SUBVIEW: COMO FUNCIONA                  -->
+    <!-- ========================================== -->
+    <div id="subview-como-funciona" class="hidden space-y-6 animate-fade-in">
+      <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8">
+        <div class="text-center max-w-xl mx-auto space-y-2">
+          <h2 class="text-2xl font-extrabold text-slate-900">Como funciona o Connect Senac?</h2>
+          <p class="text-sm text-slate-500">Um guia simples para sua participação como voluntário modelo</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200/60 relative">
+            <div class="w-10 h-10 rounded-xl bg-senac-blue text-white font-black text-lg flex items-center justify-center mb-4">1</div>
+            <h3 class="font-bold text-slate-800 text-base mb-2">Escolha o Procedimento</h3>
+            <p class="text-xs text-slate-600 leading-relaxed">Navegue pelas áreas de Estética, Barbearia, Massagem e Maquiagem. Leia a descrição, requisitos e restrições antes de selecionar a vaga.</p>
+          </div>
+
+          <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200/60 relative">
+            <div class="w-10 h-10 rounded-xl bg-senac-orange text-white font-black text-lg flex items-center justify-center mb-4">2</div>
+            <h3 class="font-bold text-slate-800 text-base mb-2">Compareça no Dia & Horário</h3>
+            <p class="text-xs text-slate-600 leading-relaxed">Dirija-se ao laboratório indicado na unidade Senac com 10 minutos de antecedência. O atendimento é supervisionado por professores especialistas.</p>
+          </div>
+
+          <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200/60 relative">
+            <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white font-black text-lg flex items-center justify-center mb-4">3</div>
+            <h3 class="font-bold text-slate-800 text-base mb-2">Avalie o Atendimento</h3>
+            <p class="text-xs text-slate-600 leading-relaxed">Após a conclusão do serviço, acesse "Meus Agendamentos" e deixe sua avaliação de 1 a 5 estrelas. Seu feedback ajuda no aprendizado dos alunos!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- 🦶 FOOTER INSTITUCIONAL                   -->
+  <!-- ========================================== -->
+  <footer class="bg-white border-t border-slate-200 py-8 mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-senac-blue">Connect Senac</span> &copy; 2026 — Plataforma Pedagógica de Modelos Voluntários.
+      </div>
+      <div class="flex items-center gap-6">
+        <span>Termos de Uso e Imagem (LGPD)</span>
+        <span>Políticas de Privacidade</span>
+        <span>Suporte Senac</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ======================================================== -->
+  <!-- 🪟 MODALS DO CANDIDATO                                    -->
+  <!-- ======================================================== -->
+
+  <!-- 1. MODAL DETALHES DO CURSO & AGENDAMENTO -->
+  <div id="modalDetalhesCurso" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl animate-modal-pop border border-slate-100 relative max-h-[90vh] flex flex-col">
+      
+      <!-- Botão Fechar -->
+      <button onclick="fecharModalDetalhes()" class="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-white/80 backdrop-blur text-slate-700 hover:bg-white flex items-center justify-center shadow-md transition-all">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <!-- Imagem de Capa -->
+      <div class="relative h-48 sm:h-56 w-full overflow-hidden bg-slate-100 flex-shrink-0">
+        <img id="detalheCursoImagem" src="" alt="Capa" class="w-full h-full object-cover">
+        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent"></div>
+        <div class="absolute bottom-4 left-6 right-6 text-white">
+          <span id="detalheCursoLocal" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-senac-orange text-white"></span>
+          <h2 id="detalheCursoNome" class="text-xl sm:text-2xl font-extrabold mt-1"></h2>
+        </div>
+      </div>
+
+      <!-- Corpo do Modal com Scroll -->
+      <div class="p-6 space-y-5 overflow-y-auto flex-grow">
+        
+        <!-- Detalhes Rápidos -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <span class="text-slate-400 block font-semibold">Professor(a)</span>
+            <span id="detalheCursoProf" class="font-bold text-slate-800"></span>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+            <span class="text-slate-400 block font-semibold">Localização</span>
+            <span id="detalheCursoSala" class="font-bold text-slate-800">SENAC</span>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 col-span-2 sm:col-span-1">
+            <span class="text-slate-400 block font-semibold">Custo</span>
+            <span class="font-bold text-emerald-600">100% Gratuito</span>
+          </div>
+        </div>
+
+        <!-- Descrição e Restrições -->
+        <div class="space-y-3">
+          <h4 class="font-bold text-sm text-slate-900">Sobre o Procedimento</h4>
+          <p id="detalheCursoDescricao" class="text-xs text-slate-600 leading-relaxed"></p>
+
+          <!-- Alerta de Restrições -->
+          <div id="blocoRestricoes" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-start gap-3">
+            <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
+            <div class="text-xs text-amber-900">
+              <span class="font-bold block">Requisitos e Restrições Sanitárias:</span>
+              <span id="detalheCursoRestricoes"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Horários Disponíveis -->
+        <div class="space-y-3">
+          <h4 class="font-bold text-sm text-slate-900 flex items-center justify-between">
+            <span>Horários com Vagas Livres</span>
+            <span class="text-xs font-normal text-slate-500">Selecione um horário:</span>
+          </h4>
+          
+          <div id="listaHorariosDisponiveis" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+            <!-- Horários injetados via JS -->
+          </div>
+        </div>
+
+        <!-- Avaliações de Outros Modelos -->
+        <div class="space-y-3 pt-2 border-t border-slate-100">
+          <h4 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+            <span>Avaliações e Comentários</span>
+          </h4>
+          <div id="detalheCursoAvaliacoes" class="space-y-2 max-h-36 overflow-y-auto pr-1">
+            <!-- Feedbacks injetados via JS -->
+          </div>
+        </div>
+
+        <!-- Termos de Consentimento (LGPD) -->
+        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+          <label class="flex items-start gap-2 cursor-pointer text-xs text-slate-700">
+            <input type="checkbox" id="check-lgpd-termos" checked class="mt-0.5 rounded text-senac-blue focus:ring-senac-blue">
+            <span>Concordo com os termos do programa voluntário e confirmo estar ciente de que o serviço é realizado por alunos em treinamento supervisionado.</span>
+          </label>
+          <label class="flex items-start gap-2 cursor-pointer text-xs text-slate-700">
+            <input type="checkbox" id="check-lgpd-imagem" checked class="mt-0.5 rounded text-senac-blue focus:ring-senac-blue">
+            <span>Autorizo o uso de imagem (antes e depois) para fins estritamente pedagógicos do Senac.</span>
+          </label>
+        </div>
+
+        <!-- Botão de Agendamento -->
+        <button id="btnConfirmarAgendamento" onclick="confirmarAgendamento()" class="w-full py-3.5 rounded-xl bg-senac-blue hover:bg-senac-blue-dark text-white font-bold text-sm transition-all shadow-md shadow-blue-900/10 flex items-center justify-center gap-2">
+          <i data-lucide="check" class="w-4 h-4"></i> Confirmar Meu Agendamento
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. MODAL DE AVALIAÇÃO / FEEDBACK (ESTRELAS) -->
+  <div id="modalFeedback" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl animate-modal-pop border border-slate-100 space-y-5">
+      
+      <div class="text-center space-y-1">
+        <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-2">
+          <i data-lucide="star" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-xl font-extrabold text-slate-900">Avalie seu Atendimento</h3>
+        <p class="text-xs text-slate-500">Seu feedback é fundamental para o aprendizado e evolução dos alunos do Senac.</p>
+      </div>
+
+      <input type="hidden" id="feedbackAgendamentoId">
+
+      <!-- Seletor de Estrelas Interativo -->
+      <div class="text-center space-y-2">
+        <div class="flex items-center justify-center gap-2 text-2xl text-slate-300 star-rating" id="star-rating-container">
+          <i data-lucide="star" data-val="1" onclick="setStarRating(1)" class="w-8 h-8 cursor-pointer fill-current text-amber-400"></i>
+          <i data-lucide="star" data-val="2" onclick="setStarRating(2)" class="w-8 h-8 cursor-pointer fill-current text-amber-400"></i>
+          <i data-lucide="star" data-val="3" onclick="setStarRating(3)" class="w-8 h-8 cursor-pointer fill-current text-amber-400"></i>
+          <i data-lucide="star" data-val="4" onclick="setStarRating(4)" class="w-8 h-8 cursor-pointer fill-current text-amber-400"></i>
+          <i data-lucide="star" data-val="5" onclick="setStarRating(5)" class="w-8 h-8 cursor-pointer fill-current text-amber-400"></i>
+        </div>
+        <span id="star-label" class="text-xs font-bold text-amber-600 block">Excelente (5 estrelas)</span>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Seu Comentário ou Sugestão</label>
+        <textarea id="feedbackComentario" rows="3" placeholder="Conte como foi sua experiência, o cuidado do aluno e a supervisão do docente..." class="w-full text-xs p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-senac-blue focus:outline-none bg-slate-50/50"></textarea>
+      </div>
+
+      <div class="flex items-center gap-3 pt-2">
+        <button onclick="fecharModalFeedback()" class="w-1/2 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all">
+          Cancelar
+        </button>
+        <button onclick="enviarFeedback()" class="w-1/2 py-2.5 rounded-xl bg-senac-blue hover:bg-senac-blue-dark text-white text-xs font-bold transition-all shadow-sm">
+          Enviar Avaliação
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="js/painel.js"></script>
 </body>
 </html>

@@ -1,42 +1,110 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-BR" class="h-full">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connect Senac - Login</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connect Senac | Login</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            senac: {
+              blue: '#004a8d',
+              'blue-dark': '#002d57',
+              'blue-light': '#e6f0fa',
+              orange: '#f29100',
+              'orange-dark': '#d97706',
+              'orange-light': '#fff8eb'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="bg-light">
+<body class="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 antialiased selection:bg-orange-100 selection:text-orange-900">
 
-    <div class="container d-flex justify-content-center align-items-center vh-100">
-        <div class="col-12 col-md-6 col-lg-4">
-            <div class="card shadow-sm">
-                <div class="card-body p-4">
-                    <h3 class="text-center mb-4 text-primary">Connect Senac</h3>
+  <div class="max-w-md w-full">
+    <!-- Card de Login Moderno -->
+    <div class="bg-white rounded-3xl p-8 sm:p-10 shadow-xl border border-slate-100 animate-fade-in relative overflow-hidden">
+      <!-- Glow Decorativo -->
+      <div class="absolute -top-16 -right-16 w-36 h-36 bg-gradient-to-br from-senac-orange/20 to-senac-blue/20 rounded-full blur-2xl pointer-events-none"></div>
 
-                    <form id="formLogin">
-                        <div class="mb-3">
-                            <label for="email" class="form-label">E-mail</label>
-                            <input type="email" class="form-control" id="email" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="senha" class="form-label">Palavra-passe</label>
-                            <input type="password" class="form-control" id="senha" required>
-                        </div>
-
-                        <div id="mensagemErro" class="text-danger mb-3 d-none"></div>
-
-                        <button type="submit" class="btn btn-primary w-100">Entrar</button>
-                    </form>
-
-                    <div class="text-center mt-3">
-                        <small>Ainda não tem conta? <a href="cadastro.html">Registe-se aqui</a>.</small>
-                    </div>
-                </div>
-            </div>
+      <!-- Cabeçalho & Logo -->
+      <div class="text-center space-y-3 mb-8">
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-senac-blue text-white shadow-lg shadow-blue-900/20 mb-1">
+          <span class="font-extrabold text-2xl tracking-wider">S</span>
+          <div class="w-2 h-2 bg-senac-orange rounded-full ml-0.5"></div>
         </div>
+        <div>
+          <div class="flex items-center justify-center gap-1.5">
+            <span class="text-2xl font-extrabold text-senac-blue tracking-tight">CONNECT</span>
+            <span class="text-2xl font-bold text-senac-orange tracking-tight">SENAC</span>
+          </div>
+          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-1">Portal de Modelos & Cursos</p>
+        </div>
+      </div>
+
+      <!-- Formulário de Login -->
+      <form id="formLogin" class="space-y-4">
+        <div>
+          <label for="email" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">E-mail</label>
+          <div class="relative">
+            <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+            <input type="email" id="email" required placeholder="seu.email@exemplo.com" class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-senac-blue focus:border-transparent transition-all bg-slate-50/50">
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label for="senha" class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Palavra-passe (Senha)</label>
+            <a href="esqueci-senha.html" class="text-xs font-semibold text-senac-blue hover:text-senac-blue-dark transition-colors">Esqueceu?</a>
+          </div>
+          <div class="relative">
+            <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+            <input type="password" id="senha" required placeholder="••••••••" class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-senac-blue focus:border-transparent transition-all bg-slate-50/50">
+          </div>
+        </div>
+
+        <!-- Mensagem de Erro / Feedback -->
+        <div id="mensagemErro" class="hidden p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-semibold text-red-700"></div>
+
+        <button type="submit" id="btnSubmitLogin" class="w-full py-3.5 rounded-xl bg-senac-blue hover:bg-senac-blue-dark text-white font-bold text-sm transition-all shadow-md shadow-blue-900/10 flex items-center justify-center gap-2">
+          <span>Entrar na Plataforma</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <!-- Rodapé do Card -->
+      <div class="mt-8 pt-6 border-t border-slate-100 text-center">
+        <p class="text-xs text-slate-500">
+          Ainda não é cadastrado? 
+          <a href="cadastro.html" class="font-bold text-senac-blue hover:text-senac-blue-dark transition-colors">Crie sua conta aqui</a>
+        </p>
+      </div>
     </div>
 
-    <script src="js/auth.js"></script>
+    <!-- Indicador de Segurança LGPD -->
+    <div class="mt-6 text-center text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
+      <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
+      <span>Ambiente acadêmico seguro em conformidade com a LGPD</span>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="js/auth.js"></script>
+  <script>
+    lucide.createIcons();
+  </script>
 </body>
 </html>
