@@ -88,7 +88,7 @@ exports.login = async (req, res) => {
         // Guardamos o 'id' e o 'perfil' (role) dentro do token para o sistema de permissões (RBAC)
         const token = jwt.sign(
             { id: utilizador.id, email: utilizador.email, perfil: utilizador.perfil },
-            process.env.JWT_SECRET || 'chave_super_secreta_senac',
+            process.env.JWT_SECRET,
             { expiresIn: '24h' }
         );
 

@@ -15,7 +15,20 @@ exports.criar = async (req, res) => {
     }
 
     try {
-        // 1. Verificar se a vaga existe e tem espaço (Regra de Overbooking)
+        // 1. Verificar se o utilizador já tem agendamento ativo nesta mesma vaga
+        const { data: jaAgendado } = await supabase
+            .from('agendamentos')
+            .select('id, status')
+            .eq('usuario_id', usuario_id)
+            .eq('disponibilidade_id', disponibilidade_id)
+            .eq('status', 'agendado')
+            .maybeSingle();
+
+        if (jaAgendado) {
+            return res.status(400).json({ erro: 'Você já possui um agendamento ativo para este mesmo horário!' });
+        }
+
+        // 2. Verificar se a vaga existe e tem capacidade disponível
         const { data: disponibilidade, error: erroDisp } = await supabase
             .from('disponibilidades')
             .select('vagas_totais, vagas_ocupadas')
@@ -30,24 +43,23 @@ exports.criar = async (req, res) => {
             return res.status(400).json({ erro: 'Infelizmente, não há mais vagas para este horário.' });
         }
 
-        // 2. Inserir o Agendamento
+        // 3. Inserir o Agendamento
         const { data: novoAgendamento, error: erroAgendamento } = await supabase
             .from('agendamentos')
             .insert([{ usuario_id, disponibilidade_id, status: 'agendado' }])
             .select();
 
         if (erroAgendamento) {
-            // Se cair na regra UNIQUE do banco de dados (mesmo utilizador e mesma vaga)
             if (erroAgendamento.code === '23505') {
                 return res.status(400).json({ erro: 'Você já está agendado para este exato horário!' });
             }
             throw erroAgendamento;
         }
 
-        // 3. Atualizar o contador de vagas ocupadas
+        // 4. Atualizar o contador de vagas ocupadas
         await supabase
             .from('disponibilidades')
-            .update({ vagas_ocupadas: disponibilidade.vagas_ocupadas + 1 })
+            .update({ vagas_ocupadas: (disponibilidade.vagas_ocupadas || 0) + 1 })
             .eq('id', disponibilidade_id);
 
         res.status(201).json({
@@ -122,10 +134,11 @@ exports.cancelar = async (req, res) => {
         // Atualiza status para cancelado
         await supabase.from('agendamentos').update({ status: 'cancelado' }).eq('id', id);
 
-        // Liberta a vaga na tabela de disponibilidades
+        // Liberta a vaga na tabela de disponibilidades com segurança
+        const vagasRestantes = Math.max(0, (agendamento.disponibilidades.vagas_ocupadas || 1) - 1);
         await supabase
             .from('disponibilidades')
-            .update({ vagas_ocupadas: agendamento.disponibilidades.vagas_ocupadas - 1 })
+            .update({ vagas_ocupadas: vagasRestantes })
             .eq('id', agendamento.disponibilidades.id);
 
         res.json({ mensagem: 'Agendamento cancelado com sucesso. A sua vaga foi libertada.' });
@@ -155,9 +168,10 @@ exports.adminCancelar = async (req, res) => {
         // O Admin cancela sem verificar dono e sem verificar a regra das 2 horas!
         await supabase.from('agendamentos').update({ status: 'cancelado' }).eq('id', id);
 
+        const vagasRestantes = Math.max(0, (agendamento.disponibilidades?.vagas_ocupadas || 1) - 1);
         await supabase
             .from('disponibilidades')
-            .update({ vagas_ocupadas: agendamento.disponibilidades.vagas_ocupadas - 1 })
+            .update({ vagas_ocupadas: vagasRestantes })
             .eq('id', agendamento.disponibilidades.id);
 
         res.json({ mensagem: '[ADMIN] Agendamento cancelado forçadamente.' });

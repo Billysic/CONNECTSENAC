@@ -44,6 +44,17 @@ document.getElementById('btnSair').addEventListener('click', () => {
     window.location.href = 'index.html';
 });
 
+// Função global de escape para mitigar injeção de HTML/Scripts (XSS)
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // Toast Helper
 function showToast(message, type = 'info') {
     let container = document.getElementById('toast-container');
@@ -215,8 +226,8 @@ function renderizarTabelaUsuarios(lista) {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50/50 transition-colors';
         tr.innerHTML = `
-            <td class="px-6 py-4 font-bold text-slate-800">${user.nome}</td>
-            <td class="px-6 py-4 text-slate-500">${user.email}</td>
+            <td class="px-6 py-4 font-bold text-slate-800">${escapeHTML(user.nome)}</td>
+            <td class="px-6 py-4 text-slate-500">${escapeHTML(user.email)}</td>
             <td class="px-6 py-4">${linkZap}</td>
             <td class="px-6 py-4">${seletorPerfil}</td>
             <td class="px-6 py-4">${statusBadge}</td>
@@ -335,15 +346,15 @@ async function carregarCursosAdmin() {
             tr.className = 'hover:bg-slate-50/50 transition-colors';
             tr.innerHTML = `
                 <td class="px-6 py-4">
-                    <div class="font-bold text-slate-800 text-xs">${curso.nome}</div>
-                    <div class="text-[11px] text-slate-400 line-clamp-1">${curso.descricao || ''}</div>
+                    <div class="font-bold text-slate-800 text-xs">${escapeHTML(curso.nome)}</div>
+                    <div class="text-[11px] text-slate-400 line-clamp-1">${escapeHTML(curso.descricao || '')}</div>
                 </td>
-                <td class="px-6 py-4 text-slate-600">${curso.usuarios ? curso.usuarios.nome : 'Docente Senac'}</td>
-                <td class="px-6 py-4 text-slate-500">${curso.localizacao || 'Laboratório Senac'}</td>
+                <td class="px-6 py-4 text-slate-600">${escapeHTML(curso.usuarios ? curso.usuarios.nome : 'Docente Senac')}</td>
+                <td class="px-6 py-4 text-slate-500">${escapeHTML(curso.localizacao || 'Laboratório Senac')}</td>
                 <td class="px-6 py-4">${statusBadge}</td>
                 <td class="px-6 py-4 text-right">
                     ${curso.status === 'ativo' ? `
-                        <button onclick="arquivarCurso('${curso.id}', '${curso.nome}')" class="px-2.5 py-1 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold transition-all">
+                        <button onclick="arquivarCurso('${curso.id}', '${escapeHTML(curso.nome)}')" class="px-2.5 py-1 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold transition-all" aria-label="Arquivar curso ${escapeHTML(curso.nome)}">
                             Arquivar
                         </button>
                     ` : '<span class="text-slate-400 text-xs">Sem ações</span>'}
@@ -530,9 +541,9 @@ async function carregarPautasGlobais() {
 
                     const inscritosHTML = agendados.map(a => `
                         <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                            <span class="font-bold text-slate-800">${a.usuarios ? a.usuarios.nome : 'Modelo'}</span>
-                            <span class="text-slate-500 font-medium">${a.usuarios ? a.usuarios.telefone : ''}</span>
-                            <span class="badge-status ${a.status === 'concluido' ? 'badge-concluido' : 'badge-agendado'}">${a.status}</span>
+                            <span class="font-bold text-slate-800">${escapeHTML(a.usuarios ? a.usuarios.nome : 'Modelo')}</span>
+                            <span class="text-slate-500 font-medium">${escapeHTML(a.usuarios ? a.usuarios.telefone : '')}</span>
+                            <span class="badge-status ${a.status === 'concluido' ? 'badge-concluido' : 'badge-agendado'}">${escapeHTML(a.status)}</span>
                         </div>
                     `).join('');
 
@@ -555,7 +566,7 @@ async function carregarPautasGlobais() {
             card.innerHTML = `
                 <div class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
                     <i data-lucide="book-open" class="w-4 h-4 text-senac-blue"></i>
-                    <span>${curso.nome}</span>
+                    <span>${escapeHTML(curso.nome)}</span>
                 </div>
                 <div class="space-y-2">
                     ${aulasHTML || '<div class="text-slate-400 text-xs">Sem horários</div>'}

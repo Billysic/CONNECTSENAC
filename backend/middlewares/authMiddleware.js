@@ -11,7 +11,7 @@ module.exports = async (req, res, next) => {
 
     try {
         const tokenLimpo = token.replace('Bearer ', '');
-        const decodificado = jwt.verify(tokenLimpo, process.env.JWT_SECRET || 'chave_super_secreta_senac');
+        const decodificado = jwt.verify(tokenLimpo, process.env.JWT_SECRET);
 
         // CONSULTA DE SEGURANÇA EM TEMPO REAL:
         const { data: usuario, error } = await supabase

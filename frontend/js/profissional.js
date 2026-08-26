@@ -37,6 +37,17 @@ document.getElementById('btnSair').addEventListener('click', () => {
     window.location.href = 'index.html';
 });
 
+// Função global de escape para mitigar injeção de HTML/Scripts (XSS)
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // Toast Helper
 function showToast(message, type = 'info') {
     let container = document.getElementById('toast-container');
@@ -123,11 +134,11 @@ async function carregarMinhasTurmas() {
                             if (ag.status === 'agendado') {
                                 acoesHTML = `
                                     <div class="flex items-center gap-2">
-                                        <button onclick="concluirServico('${ag.id}')" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1">
+                                        <button onclick="concluirServico('${ag.id}')" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1" aria-label="Confirmar presença">
                                             <i data-lucide="check" class="w-3.5 h-3.5"></i>
                                             <span>Presente</span>
                                         </button>
-                                        <button onclick="cancelarAluno('${ag.id}', '${ag.usuarios ? ag.usuarios.nome : 'Modelo'}')" class="px-3 py-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition-all flex items-center gap-1">
+                                        <button onclick="cancelarAluno('${ag.id}', '${escapeHTML(ag.usuarios ? ag.usuarios.nome : 'Modelo')}')" class="px-3 py-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold transition-all flex items-center gap-1" aria-label="Marcar falta">
                                             <i data-lucide="x" class="w-3.5 h-3.5"></i>
                                             <span>Falta</span>
                                         </button>
@@ -142,7 +153,7 @@ async function carregarMinhasTurmas() {
                             const telLimpo = ag.usuarios && ag.usuarios.telefone ? ag.usuarios.telefone.replace(/\D/g, '') : '';
                             const msgProf = encodeURIComponent(`Olá, ${ag.usuarios ? ag.usuarios.nome : 'Modelo'}! Aqui é o(a) Prof. ${payloadToken.email.split('@')[0]} do curso de ${curso.nome} do SENAC.`);
                             const linkZap = telLimpo
-                                ? `<a href="https://wa.me/55${telLimpo}?text=${msgProf}" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-xs transition-colors">
+                                ? `<a href="https://wa.me/55${telLimpo}?text=${msgProf}" target="_blank" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold text-xs transition-colors" aria-label="Contatar modelo no WhatsApp">
                                      <i data-lucide="message-circle" class="w-3.5 h-3.5"></i> WhatsApp
                                    </a>`
                                 : `<span class="text-slate-400 text-xs">Sem telefone</span>`;
@@ -150,9 +161,9 @@ async function carregarMinhasTurmas() {
                             return `
                             <tr class="hover:bg-slate-50/50 transition-colors">
                                 <td class="px-5 py-3.5">
-                                    <div class="font-bold text-slate-800 text-xs">${ag.usuarios ? ag.usuarios.nome : 'N/D'}</div>
+                                    <div class="font-bold text-slate-800 text-xs">${escapeHTML(ag.usuarios ? ag.usuarios.nome : 'N/D')}</div>
                                 </td>
-                                <td class="px-5 py-3.5 text-xs text-slate-500">${ag.usuarios ? ag.usuarios.email : 'N/D'}</td>
+                                <td class="px-5 py-3.5 text-xs text-slate-500">${escapeHTML(ag.usuarios ? ag.usuarios.email : 'N/D')}</td>
                                 <td class="px-5 py-3.5">${linkZap}</td>                                    
                                 <td class="px-5 py-3.5 text-right">${acoesHTML}</td>
                             </tr>
@@ -206,8 +217,8 @@ async function carregarMinhasTurmas() {
                             <i data-lucide="book-open" class="w-5 h-5"></i>
                         </div>
                         <div>
-                            <h3 class="font-extrabold text-base text-slate-900">${curso.nome}</h3>
-                            <p class="text-xs text-slate-500 font-medium">📍 ${curso.localizacao || 'Laboratório Senac'}</p>
+                            <h3 class="font-extrabold text-base text-slate-900">${escapeHTML(curso.nome)}</h3>
+                            <p class="text-xs text-slate-500 font-medium">📍 ${escapeHTML(curso.localizacao || 'Laboratório Senac')}</p>
                         </div>
                     </div>
                 </div>

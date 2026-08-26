@@ -78,7 +78,7 @@ exports.concluirAgendamento = async (req, res) => {
     }
 };
 
-// Cancelar a inscrição de um modelo (Falta/Desistência)
+// Cancelar a inscrição de um modelo (Falta/Desistência) com liberação da vaga
 exports.cancelarInscricao = async (req, res) => {
     const { id } = req.params;
     const profissional_id = req.usuario.id;
@@ -86,7 +86,7 @@ exports.cancelarInscricao = async (req, res) => {
     try {
         const { data: agendamento, error: erroBusca } = await supabase
             .from('agendamentos')
-            .select('status, disponibilidades(cursos(profissional_id))')
+            .select('status, disponibilidade_id, disponibilidades(vagas_ocupadas, cursos(profissional_id))')
             .eq('id', id)
             .single();
 
@@ -98,14 +98,24 @@ exports.cancelarInscricao = async (req, res) => {
             return res.status(400).json({ erro: 'Apenas agendamentos ativos podem ser cancelados.' });
         }
 
+        // 1. Atualizar status para cancelado
         const { error: erroUpdate } = await supabase
             .from('agendamentos')
             .update({ status: 'cancelado' })
             .eq('id', id);
 
         if (erroUpdate) throw erroUpdate;
-        res.json({ mensagem: 'Inscrição cancelada. A vaga foi libertada no sistema.' });
+
+        // 2. Decrementar o contador de vagas ocupadas para liberar a vaga
+        const vagasRestantes = Math.max(0, (agendamento.disponibilidades.vagas_ocupadas || 1) - 1);
+        await supabase
+            .from('disponibilidades')
+            .update({ vagas_ocupadas: vagasRestantes })
+            .eq('id', agendamento.disponibilidade_id);
+
+        res.json({ mensagem: 'Inscrição cancelada. A vaga foi liberada no sistema.' });
     } catch (error) {
+        console.error('Erro ao cancelar inscrição:', error.message);
         res.status(500).json({ erro: 'Erro ao cancelar a inscrição.' });
     }
 };

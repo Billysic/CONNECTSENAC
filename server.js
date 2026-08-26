@@ -10,31 +10,46 @@ const cursoRoutes = require('./backend/routes/cursoRoutes');
 const disponibilidadeRoutes = require('./backend/routes/disponibilidadeRoutes');
 
 
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+
+if (!process.env.JWT_SECRET) {
+    console.error('\n❌ [ERRO DE CONFIGURAÇÃO DE AMBIENTE]:');
+    console.error('A variável JWT_SECRET é obrigatória e não está definida no arquivo .env.');
+    console.error('Configure JWT_SECRET para garantir a segurança dos tokens.\n');
+    process.exit(1);
+}
+
 const app = express();
 
-require('./backend/cron/notificador'); // <-- ADICIONE ESTA LINHA
+require('./backend/cron/notificador');
 
-// ... app.use() e rotas abaixo ...
 const PORT = process.env.PORT || 3000;
 
-// Middlewares
+// Rate Limiter para rotas de autenticação (mitigação de força bruta)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 50, // limite de 50 requisições por IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { erro: 'Muitas tentativas a partir deste IP. Tente novamente em alguns minutos.' }
+});
+
+// Middlewares Globais de Segurança
+app.use(helmet({ contentSecurityPolicy: false })); // Protege cabeçalhos HTTP permitindo CDN scripts
 app.use(cors()); // Libera o acesso do Front-end
 app.use(express.json()); // Ensina o Express a entender requisições no formato JSON
 
-// A LINHA MÁGICA DA OPÇÃO 2:
-// Isto diz ao Node.js: "Qualquer ficheiro HTML, CSS ou JS que estiver na pasta 'frontend', entregue ao utilizador"
+// Arquivos estáticos do frontend
 app.use(express.static(path.join(__dirname, 'frontend')));
-
 
 // Rota de teste simples
 app.get('/api/status', (req, res) => {
     res.json({ mensagem: "Servidor Connect Senac rodando com sucesso!", status: "OK" });
 });
 
-
 // Usando as rotas na API
-// Todas as rotas de usuário terão o prefixo /api/usuarios
-app.use('/api/usuarios', usuarioRoutes);
+app.use('/api/usuarios', authLimiter, usuarioRoutes);
 app.use('/api/agendamentos', agendamentoRoutes); 
 app.use('/api/cursos', cursoRoutes);
 app.use('/api/disponibilidades', disponibilidadeRoutes);

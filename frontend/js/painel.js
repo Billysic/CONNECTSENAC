@@ -30,6 +30,17 @@ document.getElementById('btnSair').addEventListener('click', () => {
     window.location.href = 'index.html';
 });
 
+// Função global de escape para mitigar injeção de HTML/Scripts (XSS)
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // Toast Helper
 function showToast(message, type = 'info') {
     let container = document.getElementById('toast-container');
@@ -172,27 +183,27 @@ function renderizarCursos(lista) {
 
         card.innerHTML = `
             <div class="relative h-48 w-full overflow-hidden bg-slate-100">
-                <img src="${imagem}" alt="${curso.nome}" class="w-full h-full object-cover">
+                <img src="${escapeHTML(imagem)}" alt="${escapeHTML(curso.nome)}" class="w-full h-full object-cover">
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent"></div>
                 <span class="absolute top-3 right-3 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500 text-white shadow-sm">
                     100% Gratuito
                 </span>
                 <span class="absolute bottom-3 left-3 text-xs font-bold text-white flex items-center gap-1">
-                    <i data-lucide="map-pin" class="w-3.5 h-3.5 text-senac-orange"></i> ${local}
+                    <i data-lucide="map-pin" class="w-3.5 h-3.5 text-senac-orange"></i> ${escapeHTML(local)}
                 </span>
             </div>
             
             <div class="p-5 flex flex-col flex-grow justify-between space-y-4">
                 <div>
-                    <h3 class="font-extrabold text-base text-slate-900 line-clamp-1">${curso.nome}</h3>
-                    <p class="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">${curso.descricao || 'Atendimento prático supervisionado por alunos do Senac.'}</p>
+                    <h3 class="font-extrabold text-base text-slate-900 line-clamp-1">${escapeHTML(curso.nome)}</h3>
+                    <p class="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">${escapeHTML(curso.descricao || 'Atendimento prático supervisionado por alunos do Senac.')}</p>
                 </div>
 
                 <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
                     <div class="text-[11px] text-slate-500 font-medium">
-                        👨‍🏫 Prof. <strong class="text-slate-700">${profNome}</strong>
+                        👨‍🏫 Prof. <strong class="text-slate-700">${escapeHTML(profNome)}</strong>
                     </div>
-                    <button class="px-3 py-1.5 rounded-xl bg-senac-blue-light text-senac-blue hover:bg-senac-blue hover:text-white font-bold text-xs transition-all flex items-center gap-1">
+                    <button class="px-3 py-1.5 rounded-xl bg-senac-blue-light text-senac-blue hover:bg-senac-blue hover:text-white font-bold text-xs transition-all flex items-center gap-1" aria-label="Ver vagas do curso ${escapeHTML(curso.nome)}">
                         <span>Ver Vagas</span>
                         <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
                     </button>
@@ -323,10 +334,10 @@ async function carregarAvaliacoesCurso(cursoId) {
             item.className = 'p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs space-y-1';
             item.innerHTML = `
                 <div class="flex items-center justify-between">
-                    <span class="font-bold text-slate-700">${f.nome_avaliador || 'Modelo Voluntário'}</span>
+                    <span class="font-bold text-slate-700">${escapeHTML(f.nome_avaliador || 'Modelo Voluntário')}</span>
                     <span class="text-amber-500 font-bold">${estrelas}</span>
                 </div>
-                <p class="text-slate-600 text-[11px] leading-relaxed">${f.comentario || 'Sem comentário adicional.'}</p>
+                <p class="text-slate-600 text-[11px] leading-relaxed">${escapeHTML(f.comentario || 'Sem comentário adicional.')}</p>
                 <div class="text-[10px] text-slate-400 text-right">${dataF}</div>
             `;
             listEl.appendChild(item);
@@ -484,10 +495,10 @@ async function carregarMeusAgendamentos() {
             item.className = 'bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 card-hover-effect';
             item.innerHTML = `
                 <div class="flex items-center gap-4">
-                    <img src="${fotoUrl}" alt="${cursoNome}" class="w-16 h-16 rounded-2xl object-cover border border-slate-100 flex-shrink-0">
+                    <img src="${escapeHTML(fotoUrl)}" alt="${escapeHTML(cursoNome)}" class="w-16 h-16 rounded-2xl object-cover border border-slate-100 flex-shrink-0">
                     <div class="space-y-1">
                         <div class="flex items-center gap-2">
-                            <h4 class="font-extrabold text-base text-slate-900">${cursoNome}</h4>
+                            <h4 class="font-extrabold text-base text-slate-900">${escapeHTML(cursoNome)}</h4>
                             ${statusBadge}
                         </div>
                         <p class="text-xs text-slate-500 flex items-center gap-1.5 font-medium">
